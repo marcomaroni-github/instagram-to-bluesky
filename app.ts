@@ -139,7 +139,8 @@ async function main() {
 
                 if (postMedia.media_metadata?.photo_metadata?.exif_data?.length > 0) {
                     location = postMedia.media_metadata?.photo_metadata?.exif_data![0];
-                    mediaText += `\ngeo:${location.latitude},${location.longitude}`;
+                    if( location.latitude > 0 )
+                        mediaText += `\nPhoto taken at these geographical coordinates: geo:${location.latitude},${location.longitude}`;
                 }
 
                 console.log(` Media ${j} - ${postMedia.uri}`);
