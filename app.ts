@@ -77,11 +77,11 @@ async function main() {
 
             // If the post is made up of a single image,
             // the text of the post appears to be associated with the only image present
-            if ( post.media?.length == 1 ) {
-                if( postText.length == 0) {
+            if (post.media?.length == 1) {
+                if (postText.length == 0) {
                     postText = post.media[0].title;
                 }
-                if( postDate == undefined ) {
+                if (postDate == undefined) {
                     postDate = new Date(post.media[0].creation_timestamp * 1000);
                 }
             }
@@ -132,11 +132,10 @@ async function main() {
                 const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${postMedia.uri}`;
                 const imageBuffer = FS.readFileSync(mediaFilename);
 
-                if( j>3 ) {
+                if (j > 3) {
                     console.warn("Bluesky does not support more than 4 images per post, excess images will be discarded.")
                     break;
                 }
-
 
                 if (!SIMULATE) {
                     const blobRecord = await agent.uploadBlob(imageBuffer, {
