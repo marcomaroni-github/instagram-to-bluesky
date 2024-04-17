@@ -132,6 +132,12 @@ async function main() {
                 const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${postMedia.uri}`;
                 const imageBuffer = FS.readFileSync(mediaFilename);
 
+                if( j>3 ) {
+                    console.warn("Bluesky does not support more than 4 images per post, excess images will be discarded.")
+                    break;
+                }
+
+
                 if (!SIMULATE) {
                     const blobRecord = await agent.uploadBlob(imageBuffer, {
                         encoding: mimeType
@@ -142,7 +148,7 @@ async function main() {
                         image: {
                             $type: "blob",
                             ref: blobRecord.data.blob.ref,
-                            mimeType: mimeType,
+                            mimeType: blobRecord.data.blob.mimeType,
                             size: blobRecord.data.blob.size
                         }
                     })
@@ -188,7 +194,7 @@ async function main() {
 
     if (SIMULATE) {
         // In addition to the delay in AT Proto API calls, we will also consider a 10% delta for image upload
-        const minutes = Math.round((importedMedia * API_DELAY / 1000) / 60) * 1.10
+        const minutes = Math.round(((importedMedia * API_DELAY / 1000) / 60) * 1.10)
         const hours = Math.floor(minutes / 60);
         const min = minutes % 60;
         console.log(`Estimated time for real import: ${hours} hours and ${min} minutes`);
