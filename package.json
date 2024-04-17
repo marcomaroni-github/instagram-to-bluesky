@@ -1,0 +1,22 @@
+{
+  "name": "instagramtobluesky",
+  "version": "0.0.1",
+  "description": "Import Instagram archive to a Bluesky account",
+  "main": "app.js",
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "scripts": {
+    "start": "npx tsc && node app.js",
+    "start_log": "npx tsc && node app.js > import.log",
+    "compile": "npx tsc"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.12.2",
+    "dotenv": "^16.4.5",
+    "process": "^0.11.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7"
+  }
+}

@@ -1,0 +1,11 @@
+# Dependency directories
+node_modules/
+
+# environment variable files
+.env
+
+# log files
+.log
+
+# compiled js
+app.js
