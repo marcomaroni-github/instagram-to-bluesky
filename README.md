@@ -23,12 +23,12 @@ They use the official archive export file format from Instagram, this utility re
 2. Install Node.js: `npm i -g ts-node`
 3. In the project folder run: `npm i`
 3. Create an .env file in the project folder by setting the following variables:
-- `BLUESKY_USERNAME` = username into which you want to import the tweets (e.g. "test.bsky.social")
+- `BLUESKY_USERNAME` = username into which you want to import the posts (e.g. "test.bsky.social")
 - `BLUESKY_PASSWORD` = account password created via App Password (eg. "pwd123")
 - `ARCHIVE_FOLDER` = full path to the folder containing the Instagram archive (e.g. "C:/Temp/instagram-archive")
 
 
-**I highly recommend trying to simulate the import first and import a small range of tweets, using the additional parameters documented below.**
+**I highly recommend trying to simulate the import first and import a small range of posts, using the additional parameters documented below.**
 
 ## Running the script 
 
@@ -38,9 +38,9 @@ You can run the script locally: `npm start` or `npm run start_log` to write an i
 
 Additionally you can set these environment variables to customize behavior:
 
-- `SIMULATE` = if set to "1" simulates the import by counting the tweets and indicating the estimated import time.
-- `MIN_DATE` = indicates the minimum date of tweets to import, ISO format (e.g. '2011-01-01' or '2011-02-09T10:30:49.000Z').
-- `MAX_DATE` = indicates the maximum date of tweets to import, ISO format (e.g. '2012-01-01' or '2014-04-09T12:36:49.328Z').
+- `SIMULATE` = if set to "1" simulates the import by counting the posts and indicating the estimated import time.
+- `MIN_DATE` = indicates the minimum date of posts to import, ISO format (e.g. '2011-01-01' or '2011-02-09T10:30:49.000Z').
+- `MAX_DATE` = indicates the maximum date of posts to import, ISO format (e.g. '2012-01-01' or '2014-04-09T12:36:49.328Z').
 
 ## License
 
