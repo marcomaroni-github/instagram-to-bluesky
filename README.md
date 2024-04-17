@@ -4,7 +4,7 @@ Import all post exported from Instagram to a Bluesky account.
 
 ⚠️ This project is a work-in-progress ⚠️
 
-They use the official archive export file format from Instagram (https://www.instagram.com/download/request), this utility reads the archive from the local disk and using the official Bluesky Typescript SDK imports the posts into the configured Bluesky account.
+They use the official archive export file format from Instagram, this utility reads the archive from the local disk and using the official Bluesky Typescript SDK imports the posts into the configured Bluesky account.
 
 ⚠️ We recommend creating a specific account to test the import and not using your main Bluesky account ⚠️
 
@@ -15,7 +15,7 @@ They use the official archive export file format from Instagram (https://www.ins
 ## Prerequisite
 
 - Nodejs >= 20.12x
-- The archive of your post from the Instagram in your local disk.
+- The archive of your post from the Instagram in your local disk ([click here to download your personal archive](https://www.instagram.com/download/request))
 
 ## Getting started
 
