@@ -66,6 +66,10 @@ async function main() {
 
         for (let index = 0; index < sortedPost.length; index++) {
             const post = sortedPost[index];
+            let location = {
+                latitude: 0.0,
+                longitude: 0.0
+            };
 
             let postDate: Date | undefined = undefined;
             if (post.creation_timestamp != undefined)
@@ -100,15 +104,16 @@ async function main() {
             for (let j = 0; j < post.media.length; j++) {
                 const postMedia = post.media[j];
                 const mediaDate = new Date(postMedia.creation_timestamp * 1000);
-                const mediaText = postMedia.title;
+                let mediaText = postMedia.title;
 
                 // if (postMedia.uri == "media/posts/202108/240742101_558570538822653_7921317535156034037_n_17968506598442521.jpg") {
                 //     console.log("debug");
                 // }
 
-                console.log(` Media ${j} - ${postMedia.uri}`);
-                console.log(`  Created at ${mediaDate.toISOString()}`);
-                console.log(`  Text '${mediaText}'`);
+                if (j > 3) {
+                    console.warn("Bluesky does not support more than 4 images per post, excess images will be discarded.")
+                    break;
+                }
 
                 const fileType = postMedia.uri.substring(postMedia.uri.lastIndexOf(".") + 1)
                 let mimeType = "";
@@ -132,10 +137,14 @@ async function main() {
                 const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${postMedia.uri}`;
                 const imageBuffer = FS.readFileSync(mediaFilename);
 
-                if (j > 3) {
-                    console.warn("Bluesky does not support more than 4 images per post, excess images will be discarded.")
-                    break;
+                if (postMedia.media_metadata?.photo_metadata?.exif_data?.length > 0) {
+                    location = postMedia.media_metadata?.photo_metadata?.exif_data![0];
+                    mediaText += `\ngeo:${location.latitude},${location.longitude}`;
                 }
+
+                console.log(` Media ${j} - ${postMedia.uri}`);
+                console.log(`  Created at ${mediaDate.toISOString()}`);
+                console.log(`  Text '${mediaText}'`);
 
                 if (!SIMULATE) {
                     const blobRecord = await agent.uploadBlob(imageBuffer, {
@@ -185,9 +194,6 @@ async function main() {
             } else {
                 importedPosts++;
             }
-
-            // if( importedPosts > 2)
-            //     break;
         }
     }
 
