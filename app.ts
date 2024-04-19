@@ -166,6 +166,9 @@ async function main() {
                 importedMedia++;
             }
 
+            if (postText.length > 300)
+                postText = postText.substring(0, 296) + '...';
+
             const rt = new RichText({
                 text: postText
             });
