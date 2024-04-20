@@ -4,7 +4,7 @@ Import all post exported from Instagram to a Bluesky account.
 
 They use the official archive export file format from Instagram, this utility reads the archive from the local disk and using the official Bluesky Typescript SDK imports the posts into the configured Bluesky account.
 
-**An example of an account used to import posts from Instagram** [https://bsky.app/profile/mm-instagram-arch.bsky.social]
+([**An example of an account used to import posts from Instagram**](https://bsky.app/profile/mm-instagram-arch.bsky.social))
 
 ⚠️ We recommend creating a specific account to test the import and not using your main Bluesky account ⚠️
 
