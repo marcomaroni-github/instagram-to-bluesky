@@ -16,7 +16,7 @@ They use the official archive export file format from Instagram, this utility re
 ## Prerequisite
 
 - Nodejs >= 20.12x
-- The archive of your post from the Instagram unzipped in your local disk ([click here to download your personal archive](https://www.instagram.com/download/request))
+- The archive of your post from the Instagram (JSON format), unzipped in your local disk ([click here to download your personal archive](https://www.instagram.com/download/request))
 
 ## Getting started
 
