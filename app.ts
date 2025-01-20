@@ -11,25 +11,19 @@ const agent = new AtpAgent({
 });
 
 const SIMULATE = process.env.SIMULATE === '1';
-
 const API_DELAY = 2500; // https://docs.bsky.app/docs/advanced-guides/rate-limits
-
 const TWITTER_HANDLE = process.env.TWITTER_HANDLE;
 
-let MIN_DATE: Date | undefined = undefined;
-if (process.env.MIN_DATE != null && process.env.MIN_DATE.length > 0)
-  MIN_DATE = new Date(process.env.MIN_DATE as string);
+let MIN_DATE: Date | undefined = process.env.MIN_DATE
+  ? new Date(process.env.MIN_DATE)
+  : undefined;
+let MAX_DATE: Date | undefined = process.env.MAX_DATE
+  ? new Date(process.env.MAX_DATE)
+  : undefined;
 
-let MAX_DATE: Date | undefined = undefined;
-if (process.env.MAX_DATE != null && process.env.MAX_DATE.length > 0)
-  MAX_DATE = new Date(process.env.MAX_DATE as string);
-
-function decodeUTF8(data) {
+function decodeUTF8(data: any): any {
   if (typeof data === 'string') {
-    const charCodes = Array.prototype.map.call(data, (c) =>
-      c.charCodeAt(0)
-    ) as number[];
-    const utf8 = new Uint8Array(charCodes);
+    const utf8 = new TextEncoder().encode(data);
     return new TextDecoder('utf-8').decode(utf8);
   }
 
@@ -37,8 +31,8 @@ function decodeUTF8(data) {
     return data.map(decodeUTF8);
   }
 
-  if (typeof data === 'object') {
-    const obj = {};
+  if (typeof data === 'object' && data !== null) {
+    const obj: { [key: string]: any } = {};
     Object.entries(data).forEach(([key, value]) => {
       obj[key] = decodeUTF8(value);
     });
@@ -52,7 +46,7 @@ async function main() {
   console.log(`Import started at ${new Date().toISOString()}`);
 
   const fInstaPosts = FS.readFileSync(
-    process.env.ARCHIVE_FOLDER + '/your_instagram_activity/content/posts_1.json'
+    `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`
   );
   const instaPosts = decodeUTF8(JSON.parse(fInstaPosts.toString()));
   let importedPosts = 0;
@@ -224,4 +218,6 @@ async function main() {
   );
 }
 
-main();
+main().catch((error) => {
+  console.error('Error during import:', error);
+});
