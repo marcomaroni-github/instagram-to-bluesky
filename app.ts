@@ -35,24 +35,29 @@ let MAX_DATE: Date | undefined = process.env.MAX_DATE
   : undefined;
 
 function decodeUTF8(data: any): any {
-  if (typeof data === 'string') {
-    const utf8 = new TextEncoder().encode(data);
-    return new TextDecoder('utf-8').decode(utf8);
-  }
+  try {
+    if (typeof data === 'string') {
+      const utf8 = new TextEncoder().encode(data);
+      return new TextDecoder('utf-8').decode(utf8);
+    }
 
-  if (Array.isArray(data)) {
-    return data.map(decodeUTF8);
-  }
+    if (Array.isArray(data)) {
+      return data.map(decodeUTF8);
+    }
 
-  if (typeof data === 'object' && data !== null) {
-    const obj: { [key: string]: any } = {};
-    Object.entries(data).forEach(([key, value]) => {
-      obj[key] = decodeUTF8(value);
-    });
-    return obj;
-  }
+    if (typeof data === 'object' && data !== null) {
+      const obj: { [key: string]: any } = {};
+      Object.entries(data).forEach(([key, value]) => {
+        obj[key] = decodeUTF8(value);
+      });
+      return obj;
+    }
 
-  return data;
+    return data;
+  } catch (error) {
+    logger.error({ message: 'Error decoding UTF-8 data', error });
+    return data;
+  }
 }
 
 async function main() {
@@ -171,7 +176,7 @@ async function processPost(post) {
     postDate = postDate || new Date(post.media[0].creation_timestamp * 1000);
   }
 
-  let embeddedImage: any[] = [];
+  const embeddedImage: any[] = [];
   let mediaCount = 0;
 
   for (let j = 0; j < post.media.length; j++) {
@@ -183,24 +188,28 @@ async function processPost(post) {
     }
 
     const { mediaText, mimeType, imageBuffer } = await processMedia(
-      post.media[j],
-      postDate
+      post.media[j]
     );
     if (!mimeType) continue;
 
     if (!SIMULATE) {
-      const blobRecord = await agent.uploadBlob(imageBuffer, {
-        encoding: mimeType,
-      });
-      embeddedImage.push({
-        alt: mediaText,
-        image: {
-          $type: 'blob',
-          ref: blobRecord.data.blob.ref,
-          mimeType: blobRecord.data.blob.mimeType,
-          size: blobRecord.data.blob.size,
-        },
-      });
+      try {
+        const blobRecord = await agent.uploadBlob(imageBuffer, {
+          encoding: mimeType,
+        });
+        embeddedImage.push({
+          alt: mediaText,
+          image: {
+            $type: 'blob',
+            ref: blobRecord.data.blob.ref,
+            mimeType: blobRecord.data.blob.mimeType,
+            size: blobRecord.data.blob.size,
+          },
+        });
+      } catch (error) {
+        logger.error(`Failed to upload blob: ${error}`);
+        continue;
+      }
     }
 
     mediaCount++;
@@ -217,22 +226,32 @@ async function processPost(post) {
   return { postDate, postText, embeddedImage, mediaCount };
 }
 
-async function processMedia(media, postDate) {
+async function processMedia(media) {
   const mediaDate = new Date(media.creation_timestamp * 1000);
   const fileType = media.uri.substring(media.uri.lastIndexOf('.') + 1);
   const mimeType = getMimeType(fileType);
   const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${media.uri}`;
-  const imageBuffer = FS.readFileSync(mediaFilename);
-  let location;
-  let mediaText = media.title;
+  let imageBuffer;
 
+  try {
+    imageBuffer = FS.readFileSync(mediaFilename);
+  } catch (error) {
+    logger.error({
+      message: `Failed to read media file: ${mediaFilename}`,
+      error,
+    });
+    return { mediaText: '', mimeType: null, imageBuffer: null };
+  }
+
+  let mediaText = media.title || '';
   if (media.media_metadata?.photo_metadata?.exif_data?.length > 0) {
-    location = media.media_metadata.photo_metadata.exif_data[0];
+    const location = media.media_metadata.photo_metadata.exif_data[0];
     if (location.latitude > 0) {
       mediaText += `\nPhoto taken at these geographical coordinates: geo:${location.latitude},${location.longitude}`;
     }
   }
-  let truncatedText =
+
+  const truncatedText =
     mediaText.length > 100 ? mediaText.substring(0, 100) + '...' : mediaText;
 
   logger.info({
@@ -243,7 +262,7 @@ async function processMedia(media, postDate) {
     Text: truncatedText.replace(/[\r\n]+/g, ' ') || 'No title',
   });
 
-  return { mediaText, mimeType, imageBuffer };
+  return { mediaText: truncatedText, mimeType, imageBuffer };
 }
 
 function getMimeType(fileType) {
