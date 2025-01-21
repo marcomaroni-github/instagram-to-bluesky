@@ -73,6 +73,11 @@ async function main() {
     logger.warn('--- SIMULATE mode is enabled, no posts will be imported ---');
   } else {
     logger.info('--- SIMULATE mode is disabled, posts will be imported ---');
+
+    await agent.login({
+      identifier: process.env.BLUESKY_USERNAME!,
+      password: process.env.BLUESKY_PASSWORD!,
+    });
   }
   const fInstaPosts = FS.readFileSync(
     `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`
@@ -89,15 +94,15 @@ async function main() {
       return ad - bd;
     });
 
-    await agent.login({
-      identifier: process.env.BLUESKY_USERNAME!,
-      password: process.env.BLUESKY_PASSWORD!,
-    });
-
     for (const post of sortedPosts) {
-      let checkDate = post.creation_timestamp
-        ? new Date(post.creation_timestamp * 1000)
-        : undefined;
+      let checkDate;
+      if (post.creation_timestamp) {
+        checkDate = new Date(post.creation_timestamp * 1000);
+      } else if (post.media[0].creation_timestamp) {
+        checkDate = new Date(post.media[0].creation_timestamp * 1000);
+      } else {
+        checkDate = undefined;
+      }
       if (!checkDate) {
         logger.warn('Skipping post - No date');
         continue;
