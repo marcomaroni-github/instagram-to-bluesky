@@ -1,6 +1,16 @@
 import * as dotenv from 'dotenv';
 import FS from 'fs';
 import * as process from 'process';
+import { DateTime } from 'luxon';
+import { pino } from 'pino';
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+    },
+  },
+});
 
 import { AtpAgent, RichText } from '@atproto/api';
 
@@ -11,8 +21,11 @@ const agent = new AtpAgent({
 });
 
 const SIMULATE = process.env.SIMULATE === '1';
-const API_DELAY = 2500; // https://docs.bsky.app/docs/advanced-guides/rate-limits
 const TWITTER_HANDLE = process.env.TWITTER_HANDLE;
+const MAX_IMAGES_PER_POST = 4;
+const POST_TEXT_LIMIT = 300;
+const POST_TEXT_TRUNCATE_SUFFIX = '...';
+const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
 
 let MIN_DATE: Date | undefined = process.env.MIN_DATE
   ? new Date(process.env.MIN_DATE)
@@ -43,18 +56,31 @@ function decodeUTF8(data: any): any {
 }
 
 async function main() {
-  console.log(`Import started at ${new Date().toISOString()}`);
-
+  logger.info(`Import started at ${new Date().toISOString()}`);
+  logger.info({
+    SourceFolder: process.env.ARCHIVE_FOLDER,
+    username: process.env.BLUESKY_USERNAME,
+    MIN_DATE,
+    MAX_DATE,
+    SIMULATE,
+  });
+  if (SIMULATE) {
+    logger.warn('--- SIMULATE mode is enabled, no posts will be imported ---');
+  } else {
+    logger.info('--- SIMULATE mode is disabled, posts will be imported ---');
+  }
   const fInstaPosts = FS.readFileSync(
     `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`
   );
   const instaPosts = decodeUTF8(JSON.parse(fInstaPosts.toString()));
   let importedPosts = 0;
   let importedMedia = 0;
-  if (instaPosts != null && instaPosts.length > 0) {
-    const sortedPost = instaPosts.sort((a, b) => {
-      let ad = new Date(a.media[0].creation_timestamp * 1000).getTime();
-      let bd = new Date(b.media[0].creation_timestamp * 1000).getTime();
+  let newPostURI: string | null = '';
+
+  if (instaPosts && instaPosts.length > 0) {
+    const sortedPosts = instaPosts.sort((a, b) => {
+      const ad = new Date(a.media[0].creation_timestamp * 1000).getTime();
+      const bd = new Date(b.media[0].creation_timestamp * 1000).getTime();
       return ad - bd;
     });
 
@@ -63,161 +89,212 @@ async function main() {
       password: process.env.BLUESKY_PASSWORD!,
     });
 
-    for (let index = 0; index < sortedPost.length; index++) {
-      const post = sortedPost[index];
-      let location = {
-        latitude: 0.0,
-        longitude: 0.0,
-      };
-
-      let postDate: Date | undefined = undefined;
-      if (post.creation_timestamp != undefined)
-        postDate = new Date(post.creation_timestamp * 1000);
-
-      let postText = '';
-      if (post.title && post.title.length > 0) postText = post.title;
-
-      // If the post is made up of a single image,
-      // the text of the post appears to be associated with the only image present
-      if (post.media?.length == 1) {
-        if (postText.length == 0) {
-          postText = post.media[0].title;
-        }
-        if (postDate == undefined) {
-          postDate = new Date(post.media[0].creation_timestamp * 1000);
-        }
+    for (const post of sortedPosts) {
+      let checkDate = post.creation_timestamp
+        ? new Date(post.creation_timestamp * 1000)
+        : undefined;
+      if (!checkDate) {
+        logger.warn('Skipping post - No date');
+        continue;
       }
-
-      //this cheks assume that the array is sorted by date (first the oldest)
-      if (MIN_DATE != undefined && postDate! < MIN_DATE) continue;
-      if (MAX_DATE != undefined && postDate! > MAX_DATE) break;
-
-      console.log(`Parse Instagram post'`);
-      console.log(` Created at ${postDate?.toISOString()}`);
-      console.log(` Text '${postText}'`);
-
-      let embeddedImage = [] as any;
-      for (let j = 0; j < post.media.length; j++) {
-        const postMedia = post.media[j];
-        const mediaDate = new Date(postMedia.creation_timestamp * 1000);
-        let mediaText = postMedia.title;
-
-        // if (postMedia.uri == "media/posts/202108/240742101_558570538822653_7921317535156034037_n_17968506598442521.jpg") {
-        //     console.log("debug");
-        // }
-
-        if (j > 3) {
-          console.warn(
-            'Bluesky does not support more than 4 images per post, excess images will be discarded.'
-          );
-          break;
-        }
-
-        const fileType = postMedia.uri.substring(
-          postMedia.uri.lastIndexOf('.') + 1
+      if (MIN_DATE && checkDate < MIN_DATE) {
+        logger.warn(
+          `Skipping post - Before MIN_DATE: [${DateTime.fromJSDate(
+            checkDate
+          ).toLocaleString(DateTime.DATE_MED)}]`
         );
-        let mimeType = '';
-        switch (fileType) {
-          case 'heic':
-            mimeType = 'image/heic';
-            break;
-          case 'webp':
-            mimeType = 'image/webp';
-            break;
-          case 'jpg':
-            mimeType = 'image/jpeg';
-            break;
-          default:
-            console.error('Unsopported image file type' + fileType);
-            break;
-        }
-        if (mimeType.length <= 0) continue;
-
-        const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${postMedia.uri}`;
-        const imageBuffer = FS.readFileSync(mediaFilename);
-
-        if (postMedia.media_metadata?.photo_metadata?.exif_data?.length > 0) {
-          location = postMedia.media_metadata?.photo_metadata?.exif_data![0];
-          if (location.latitude > 0)
-            mediaText += `\nPhoto taken at these geographical coordinates: geo:${location.latitude},${location.longitude}`;
-        }
-
-        console.log(` Media ${j} - ${postMedia.uri}`);
-        console.log(`  Created at ${mediaDate.toISOString()}`);
-        console.log(`  Text '${mediaText}'`);
-
-        if (!SIMULATE) {
-          const blobRecord = await agent.uploadBlob(imageBuffer, {
-            encoding: mimeType,
-          });
-
-          embeddedImage.push({
-            alt: mediaText,
-            image: {
-              $type: 'blob',
-              ref: blobRecord.data.blob.ref,
-              mimeType: blobRecord.data.blob.mimeType,
-              size: blobRecord.data.blob.size,
-            },
-          });
-        }
-
-        importedMedia++;
+        continue;
       }
-
-      if (postText.length > 300) postText = postText.substring(0, 296) + '...';
-
-      const rt = new RichText({
-        text: postText,
-      });
-      await rt.detectFacets(agent);
-      const postRecord = {
-        $type: 'app.bsky.feed.post',
-        text: rt.text,
-        facets: rt.facets,
-        createdAt: postDate?.toISOString(),
-        embed:
-          embeddedImage.length > 0
-            ? { $type: 'app.bsky.embed.images', images: embeddedImage }
-            : undefined,
-      };
+      if (MAX_DATE && checkDate > MAX_DATE) {
+        logger.warn('Skipping post - After MAX_DATE');
+        break;
+      }
+      const { postDate, postText, embeddedImage, mediaCount } =
+        await processPost(post);
+      if (!postDate || !postText) {
+        logger.warn('Skipping post - No Text');
+        continue;
+      }
 
       if (!SIMULATE) {
-        //I wait 3 seconds so as not to exceed the api rate limits
-        await new Promise((resolve) => setTimeout(resolve, API_DELAY));
-
-        const recordData = await agent.post(postRecord);
-        const i = recordData.uri.lastIndexOf('/');
-        if (i > 0) {
-          const rkey = recordData.uri.substring(i + 1);
-          const postUri = `https://bsky.app/profile/${process.env
-            .BLUESKY_USERNAME!}/post/${rkey}`;
-          console.log('Bluesky post create, URL: ' + postUri);
+        await new Promise((resolve) =>
+          setTimeout(resolve, API_RATE_LIMIT_DELAY)
+        );
+        newPostURI = await createBlueskyPost(postDate, postText, embeddedImage);
+        if (newPostURI) {
           importedPosts++;
-        } else {
-          console.warn(recordData);
         }
       } else {
         importedPosts++;
       }
+
+      logger.debug({
+        IG_Post: {
+          message: 'Instagram Post',
+          Created: `${postDate.toISOString()}`,
+          embeddedImage,
+          Text:
+            postText.length > 50 ? postText.substring(0, 50) + '...' : postText,
+        },
+        BlueSkuy_Post: {
+          message: 'Bluesky Post',
+          Created: `${postDate.toISOString()}`,
+          url: newPostURI,
+          embeddedImage,
+          Text:
+            postText.length > 50 ? postText.substring(0, 50) + '...' : postText,
+        },
+      });
+
+      importedMedia += mediaCount;
     }
   }
 
   if (SIMULATE) {
-    // In addition to the delay in AT Proto API calls, we will also consider a 10% delta for image upload
-    const minutes = Math.round(((importedMedia * API_DELAY) / 1000 / 60) * 1.1);
-    const hours = Math.floor(minutes / 60);
-    const min = minutes % 60;
-    console.log(
-      `Estimated time for real import: ${hours} hours and ${min} minutes`
-    );
+    const estimatedTime = calculateEstimatedTime(importedMedia);
+    logger.debug(`Estimated time for real import: ${estimatedTime}`);
   }
 
-  console.log(
+  logger.info(
     `Import finished at ${new Date().toISOString()}, imported ${importedPosts} posts with ${importedMedia} media`
   );
 }
 
+async function processPost(post) {
+  let postDate = post.creation_timestamp
+    ? new Date(post.creation_timestamp * 1000)
+    : undefined;
+  let postText = post.title || '';
+
+  if (post.media?.length === 1) {
+    postText = postText || post.media[0].title;
+    postDate = postDate || new Date(post.media[0].creation_timestamp * 1000);
+  }
+
+  let embeddedImage: any[] = [];
+  let mediaCount = 0;
+
+  for (let j = 0; j < post.media.length; j++) {
+    if (j >= MAX_IMAGES_PER_POST) {
+      logger.warn(
+        'Bluesky does not support more than 4 images per post, excess images will be discarded.'
+      );
+      break;
+    }
+
+    const { mediaText, mimeType, imageBuffer } = await processMedia(
+      post.media[j],
+      postDate
+    );
+    if (!mimeType) continue;
+
+    if (!SIMULATE) {
+      const blobRecord = await agent.uploadBlob(imageBuffer, {
+        encoding: mimeType,
+      });
+      embeddedImage.push({
+        alt: mediaText,
+        image: {
+          $type: 'blob',
+          ref: blobRecord.data.blob.ref,
+          mimeType: blobRecord.data.blob.mimeType,
+          size: blobRecord.data.blob.size,
+        },
+      });
+    }
+
+    mediaCount++;
+  }
+
+  if (postText.length > POST_TEXT_LIMIT) {
+    postText =
+      postText.substring(
+        0,
+        POST_TEXT_LIMIT - POST_TEXT_TRUNCATE_SUFFIX.length
+      ) + POST_TEXT_TRUNCATE_SUFFIX;
+  }
+
+  return { postDate, postText, embeddedImage, mediaCount };
+}
+
+async function processMedia(media, postDate) {
+  const mediaDate = new Date(media.creation_timestamp * 1000);
+  const fileType = media.uri.substring(media.uri.lastIndexOf('.') + 1);
+  const mimeType = getMimeType(fileType);
+  const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${media.uri}`;
+  const imageBuffer = FS.readFileSync(mediaFilename);
+  let location;
+  let mediaText = media.title;
+
+  if (media.media_metadata?.photo_metadata?.exif_data?.length > 0) {
+    location = media.media_metadata.photo_metadata.exif_data[0];
+    if (location.latitude > 0) {
+      mediaText += `\nPhoto taken at these geographical coordinates: geo:${location.latitude},${location.longitude}`;
+    }
+  }
+  let truncatedText =
+    mediaText.length > 100 ? mediaText.substring(0, 100) + '...' : mediaText;
+
+  logger.info({
+    message: 'Instagram Source Media',
+    mimeType,
+    mediaFilename,
+    Created: `${mediaDate.toISOString()}`,
+    Text: truncatedText.replace(/[\r\n]+/g, ' ') || 'No title',
+  });
+
+  return { mediaText, mimeType, imageBuffer };
+}
+
+function getMimeType(fileType) {
+  switch (fileType) {
+    case 'heic':
+      return 'image/heic';
+    case 'webp':
+      return 'image/webp';
+    case 'jpg':
+      return 'image/jpeg';
+    default:
+      logger.warn('Unsupported image file type ' + fileType);
+      return '';
+  }
+}
+
+async function createBlueskyPost(postDate, postText, embeddedImage) {
+  const rt = new RichText({ text: postText });
+  await rt.detectFacets(agent);
+  const postRecord = {
+    $type: 'app.bsky.feed.post',
+    text: rt.text,
+    facets: rt.facets,
+    createdAt: postDate.toISOString(),
+    embed:
+      embeddedImage.length > 0
+        ? { $type: 'app.bsky.embed.images', images: embeddedImage }
+        : undefined,
+  };
+
+  const recordData = await agent.post(postRecord);
+  const i = recordData.uri.lastIndexOf('/');
+  if (i > 0) {
+    const rkey = recordData.uri.substring(i + 1);
+    return `https://bsky.app/profile/${process.env
+      .BLUESKY_USERNAME!}/post/${rkey}`;
+  } else {
+    logger.warn(recordData);
+    return null;
+  }
+}
+
+function calculateEstimatedTime(importedMedia) {
+  const minutes = Math.round(
+    ((importedMedia * API_RATE_LIMIT_DELAY) / 1000 / 60) * 1.1
+  );
+  const hours = Math.floor(minutes / 60);
+  const min = minutes % 60;
+  return `${hours} hours and ${min} minutes`;
+}
+
 main().catch((error) => {
-  console.error('Error during import:', error);
+  logger.error({ message: 'Error during import:', error });
 });
