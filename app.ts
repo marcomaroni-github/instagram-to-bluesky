@@ -73,7 +73,6 @@ async function main() {
     logger.warn('--- SIMULATE mode is enabled, no posts will be imported ---');
   } else {
     logger.info('--- SIMULATE mode is disabled, posts will be imported ---');
-
     await agent.login({
       identifier: process.env.BLUESKY_USERNAME!,
       password: process.env.BLUESKY_PASSWORD!,
