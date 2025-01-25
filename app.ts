@@ -1,8 +1,11 @@
 import * as dotenv from 'dotenv';
 import FS from 'fs';
-import * as process from 'process';
 import { DateTime } from 'luxon';
 import { pino } from 'pino';
+import * as process from 'process';
+
+import { AtpAgent, RichText } from '@atproto/api';
+
 const logger = pino({
   transport: {
     target: 'pino-pretty',
@@ -11,8 +14,6 @@ const logger = pino({
     },
   },
 });
-
-import { AtpAgent, RichText } from '@atproto/api';
 
 dotenv.config();
 
@@ -131,6 +132,7 @@ async function main() {
         );
         newPostURI = await createBlueskyPost(postDate, postText, embeddedImage);
         if (newPostURI) {
+          logger.info(`Bluesky post create with uri : ${newPostURI}`)
           importedPosts++;
         }
       } else {
@@ -145,7 +147,7 @@ async function main() {
           Text:
             postText.length > 50 ? postText.substring(0, 50) + '...' : postText,
         },
-        BlueSkuy_Post: {
+        BS_Post: {
           message: 'Bluesky Post',
           Created: `${postDate.toISOString()}`,
           url: newPostURI,
@@ -161,7 +163,7 @@ async function main() {
 
   if (SIMULATE) {
     const estimatedTime = calculateEstimatedTime(importedMedia);
-    logger.debug(`Estimated time for real import: ${estimatedTime}`);
+    logger.info(`Estimated time for real import: ${estimatedTime}`);
   }
 
   logger.info(
