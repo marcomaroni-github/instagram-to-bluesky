@@ -27,7 +27,7 @@ They use the official archive export file format from Instagram, this utility re
 
 ```shell
 # username into which you want to import the posts (e.g. "test.bsky.social")
-BLUESKY_USERNAME=test
+BLUESKY_USERNAME=test.bsky.social
 # account password created via App Password
 BLUESKY_PASSWORD=pwd123
 # Where your archive is located
