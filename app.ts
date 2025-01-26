@@ -7,7 +7,6 @@ import sharp from 'sharp';
 import byteSize from 'byte-size';
 
 import { AtpAgent, RichText } from '@atproto/api';
-import { buffer } from 'stream/consumers';
 
 const logger = pino({
   transport: {
