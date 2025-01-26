@@ -3,6 +3,7 @@ import FS from 'fs';
 import { DateTime } from 'luxon';
 import { pino } from 'pino';
 import * as process from 'process';
+import sharp from 'sharp';
 
 import { AtpAgent, RichText } from '@atproto/api';
 
@@ -203,6 +204,9 @@ async function processPost(post) {
         const blobRecord = await agent.uploadBlob(imageBuffer, {
           encoding: mimeType,
         });
+
+        const imageMeta = await sharp(imageBuffer).metadata();
+
         embeddedImage.push({
           alt: mediaText,
           image: {
@@ -211,6 +215,10 @@ async function processPost(post) {
             mimeType: blobRecord.data.blob.mimeType,
             size: blobRecord.data.blob.size,
           },
+          aspectRatio: {
+              width: imageMeta.width,
+              height: imageMeta.height
+          }
         });
       } catch (error) {
         logger.error(`Failed to upload blob: ${error}`);
