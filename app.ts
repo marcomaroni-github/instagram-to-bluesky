@@ -4,8 +4,10 @@ import { DateTime } from 'luxon';
 import { pino } from 'pino';
 import * as process from 'process';
 import sharp from 'sharp';
+import byteSize from 'byte-size';
 
 import { AtpAgent, RichText } from '@atproto/api';
+import { buffer } from 'stream/consumers';
 
 const logger = pino({
   transport: {
@@ -28,6 +30,7 @@ const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = '...';
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
+const API_LIMIT_IMAGE_UPLOAD_SIZE = 976000;
 
 let MIN_DATE: Date | undefined = process.env.MIN_DATE
   ? new Date(process.env.MIN_DATE)
@@ -120,8 +123,14 @@ async function main() {
         logger.warn('Skipping post - After MAX_DATE');
         break;
       }
-      const { postDate, postText, embeddedImage, mediaCount } = 
+      const { postDate, postText, embeddedImage, mediaCount } =
         await processPost(post);
+
+      if(!postDate)
+      {
+        logger.error('Skipping post - No Post Date');
+        break;
+      }
 
       if (!SIMULATE) {
         await new Promise((resolve) =>
@@ -212,8 +221,8 @@ async function processPost(post) {
             size: blobRecord.data.blob.size,
           },
           aspectRatio: {
-              width: imageMeta.width,
-              height: imageMeta.height
+            width: imageMeta.width,
+            height: imageMeta.height
           }
         });
       } catch (error) {
@@ -251,6 +260,60 @@ async function processMedia(media) {
       error,
     });
     return { mediaText: '', mimeType: null, imageBuffer: null };
+  }
+
+  if (imageBuffer.length > API_LIMIT_IMAGE_UPLOAD_SIZE && mimeType != '') {
+    logger.warn({
+      message: `Image size (${byteSize(imageBuffer.length)}) is larger than upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)}). Will attempt to resize buffer ${mediaFilename}` 
+    });
+
+    const sharpImage = sharp(imageBuffer);
+
+    const imageMeta = await sharpImage.metadata();
+
+    const IMAGE_LENGTH_LIMIT = 1920;
+
+    if (imageMeta.width && imageMeta.height) {
+      let width: number | undefined = (imageMeta.width > imageMeta.height) ? IMAGE_LENGTH_LIMIT : undefined;
+      const height: number | undefined = (imageMeta.height > imageMeta.width) ? IMAGE_LENGTH_LIMIT : undefined;
+
+      // both will be undefined if the image is square, so set the width.
+      if(!width && !height)
+      {
+        width = IMAGE_LENGTH_LIMIT;
+      }
+
+      const bufferResized = await sharp(imageBuffer)
+        .resize({ width: width, height: height, withoutEnlargement: true })
+        .toBuffer();
+      
+      const metaResized = await sharp(bufferResized).metadata();
+
+      logger.info({
+        message: `before: w${imageMeta.width} h${imageMeta.height} | after: w${metaResized.width} h${metaResized.height}`
+      });
+
+      if (bufferResized.length > API_LIMIT_IMAGE_UPLOAD_SIZE) {
+        logger.error({
+          message: `Resized image size (${byteSize(bufferResized.length)}) larger than image upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)})`
+        });
+        return { mediaText: '', mimeType: null, imageBuffer: null };
+      }
+      else {
+        logger.info({
+          message: `Image successfully resized (${byteSize(bufferResized.length)}) to be less than upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)}). This does not change the original image on disk.`
+        });
+
+        imageBuffer = bufferResized;
+      }
+    }
+    else {
+      logger.error({
+        message: `Image width or height meta data is missing, image buffer cannot be resized. Image size (${byteSize(imageBuffer.length)} is larger than upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)}))`
+      });
+
+      return { mediaText: '', mimeType: null, imageBuffer: null };
+    }
   }
 
   let mediaText = media.title || '';
