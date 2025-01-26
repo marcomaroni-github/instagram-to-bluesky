@@ -49,7 +49,7 @@ Additionally you can set these environment variables to customize behavior:
 - `MAX_DATE` = indicates the maximum date of posts to import, ISO format (e.g. '2012-01-01' or '2014-04-09T12:36:49.328Z').
 
 ### Notes
-The Bluesky has an upload limit of 1mb for image files. The script will check images that are over 1mb and if they are will scale the longest edge of the image down to 1920px. Which in most cases will decrease the image filesize below 1mb. In cases where its still too big, the image will be skipped. 
+The Bluesky API has an upload limit of 1mb for image files. The script will check images that are over 1mb and if they are will scale the longest edge of the image down to 1920px. Which in most cases will decrease the image filesize below 1mb. In cases where its still too big, the image will be skipped. 
 
 ## License
 
