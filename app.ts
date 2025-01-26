@@ -119,12 +119,8 @@ async function main() {
         logger.warn('Skipping post - After MAX_DATE');
         break;
       }
-      const { postDate, postText, embeddedImage, mediaCount } =
+      const { postDate, postText, embeddedImage, mediaCount } = 
         await processPost(post);
-      if (!postDate || !postText) {
-        logger.warn('Skipping post - No Text');
-        continue;
-      }
 
       if (!SIMULATE) {
         await new Promise((resolve) =>
