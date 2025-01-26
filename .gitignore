@@ -11,3 +11,5 @@ node_modules/
 app.js
 
 archive/
+
+.DS_store
