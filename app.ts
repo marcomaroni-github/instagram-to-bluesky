@@ -121,6 +121,10 @@ async function main() {
       }
       const { postDate, postText, embeddedImage, mediaCount } = 
         await processPost(post);
+      if( !postDate) {
+        logger.warn('Skipping post - Invalid date');
+        continue
+      }
 
       if (!SIMULATE) {
         await new Promise((resolve) =>
