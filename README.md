@@ -47,6 +47,7 @@ Additionally you can set these environment variables to customize behavior:
 - `SIMULATE` = if set to "1" simulates the import by counting the posts and indicating the estimated import time.
 - `MIN_DATE` = indicates the minimum date of posts to import, ISO format (e.g. '2011-01-01' or '2011-02-09T10:30:49.000Z').
 - `MAX_DATE` = indicates the maximum date of posts to import, ISO format (e.g. '2012-01-01' or '2014-04-09T12:36:49.328Z').
+- `LOG_LEVEL` =  set to 'debug' for more verbose logging output or silet to mute logging (default is 'info')
 
 ## License
 

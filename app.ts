@@ -7,6 +7,8 @@ import sharp from 'sharp';
 
 import { AtpAgent, RichText } from '@atproto/api';
 
+dotenv.config();
+
 const logger = pino({
   transport: {
     target: 'pino-pretty',
@@ -14,16 +16,14 @@ const logger = pino({
       colorize: true,
     },
   },
+  level: process.env.LOG_LEVEL || 'info',
 });
-
-dotenv.config();
 
 const agent = new AtpAgent({
   service: 'https://bsky.social',
 });
 
 const SIMULATE = process.env.SIMULATE === '1';
-const TWITTER_HANDLE = process.env.TWITTER_HANDLE;
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = '...';
