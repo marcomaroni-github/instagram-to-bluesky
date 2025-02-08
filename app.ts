@@ -213,10 +213,12 @@ async function processPost(post) {
   
   if (mimeType.startsWith('video/')) {
     const videoEmbed = await processVideoPost(post);
-    if (videoEmbed) {
-      embeddedMedia.push(videoEmbed);
-      mediaCount = 1;
+    if (!videoEmbed) {
+      logger.warn('Skipping post - Video upload failed');
+      return { postDate: null, postText: '', embeddedMedia: [], mediaCount: 0 };
     }
+    embeddedMedia.push(videoEmbed);
+    mediaCount = 1;
     return { postDate, postText, embeddedMedia, mediaCount };
   }
 
