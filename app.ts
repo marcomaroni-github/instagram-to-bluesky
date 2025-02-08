@@ -404,28 +404,21 @@ async function processVideoPost(post) {
 
   if (!SIMULATE) {
     try {
-      // Write buffer to temporary file to get dimensions
-      const tempFile = `./temp_${Date.now()}.mp4`;
-      FS.writeFileSync(tempFile, mediaBuffer);
-      
-      // Get video dimensions using ffprobe
-      const dimensions = await getVideoDimensions(tempFile);
-      
-      // Clean up temp file
-      FS.unlinkSync(tempFile);
-
-      logger.info({
-        message: 'Attempting video upload',
-        fileSize: mediaBuffer.length,
-        mimeType,
-        dimensions
-      });
-
       // Get the user's DID first
       const profile = await agent.api.app.bsky.actor.getProfile({ actor: process.env.BLUESKY_USERNAME! });
       
+      if (!agent.session?.accessJwt) {
+        throw new Error('No valid session or JWT available');
+      }
+
       // Generate a random filename
       const filename = `${Math.random().toString(36).substring(2)}.mp4`;
+
+      logger.info({
+        message: 'Video upload attempt',
+        did: profile.data.did,
+        hasJwt: !!agent.session?.accessJwt
+      });
 
       // Make direct request to video endpoint
       const response = await fetch('https://video.bsky.app/xrpc/app.bsky.video.uploadVideo?' + 
@@ -437,11 +430,21 @@ async function processVideoPost(post) {
         headers: {
           'Content-Type': mimeType,
           'Authorization': `Bearer ${agent.session?.accessJwt}`,
+          'Accept': '*/*',
+          'Origin': 'https://bsky.app',
+          'Referer': 'https://bsky.app/',
+          'Content-Length': mediaBuffer.length.toString(),
         },
         body: mediaBuffer
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        logger.error({
+          message: 'Video upload response error',
+          status: response.status,
+          text: errorText
+        });
         throw new Error(`Video upload failed: ${response.status} ${response.statusText}`);
       }
 
@@ -467,8 +470,8 @@ async function processVideoPost(post) {
           size: mediaBuffer.length,
         },
         aspectRatio: {
-          width: dimensions.width ?? 640,
-          height: dimensions.height ?? 640
+          width: 640,  // Fixed dimensions for now
+          height: 640
         }
       };
     } catch (err) {
