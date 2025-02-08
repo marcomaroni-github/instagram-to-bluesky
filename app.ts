@@ -408,17 +408,26 @@ async function processVideoPost(post) {
       const profile = await agent.api.app.bsky.actor.getProfile({ actor: process.env.BLUESKY_USERNAME! });
       
       if (!agent.session?.accessJwt) {
-        throw new Error('No valid session or JWT available');
+        // Re-login to get fresh tokens
+        await agent.login({
+          identifier: process.env.BLUESKY_USERNAME!,
+          password: process.env.BLUESKY_PASSWORD!,
+        });
+        
+        if (!agent.session?.accessJwt) {
+          throw new Error('Failed to get valid session after login');
+        }
       }
-
-      // Generate a random filename
-      const filename = `${Math.random().toString(36).substring(2)}.mp4`;
 
       logger.info({
         message: 'Video upload attempt',
         did: profile.data.did,
-        hasJwt: !!agent.session?.accessJwt
+        hasJwt: !!agent.session?.accessJwt,
+        jwtLength: agent.session?.accessJwt.length
       });
+
+      // Generate a random filename
+      const filename = `${Math.random().toString(36).substring(2)}.mp4`;
 
       // Make direct request to video endpoint
       const response = await fetch('https://video.bsky.app/xrpc/app.bsky.video.uploadVideo?' + 
