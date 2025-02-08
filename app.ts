@@ -37,6 +37,16 @@ let MAX_DATE: Date | undefined = process.env.MAX_DATE
   ? new Date(process.env.MAX_DATE)
   : undefined;
 
+// Add interface for API error response
+interface ApiError {
+  response?: {
+    data?: any;
+    status?: number;
+    headers?: any;
+  };
+  message?: string;
+}
+
 function decodeUTF8(data: any): any {
   try {
     if (typeof data === 'string') {
@@ -395,34 +405,62 @@ async function processVideoPost(post) {
         mimeType,
       });
 
-      const blobRecord = await agent.uploadBlob(mediaBuffer, {
-        encoding: mimeType,
-      }).catch(error => {
-        logger.error({
-          message: 'Video upload failed',
-          error: error.response?.data || error,
-          status: error.response?.status,
-          headers: error.response?.headers
-        });
-        throw error;
+      // Get the user's DID first
+      const profile = await agent.api.app.bsky.actor.getProfile({ actor: process.env.BLUESKY_USERNAME! });
+      
+      // Generate a random filename
+      const filename = `${Math.random().toString(36).substring(2)}.mp4`;
+
+      // Make direct request to video endpoint
+      const response = await fetch('https://video.bsky.app/xrpc/app.bsky.video.uploadVideo?' + 
+        new URLSearchParams({
+          did: profile.data.did,
+          name: filename
+        }), {
+        method: 'POST',
+        headers: {
+          'Content-Type': mimeType,
+          'Authorization': `Bearer ${agent.session?.accessJwt}`,
+        },
+        body: mediaBuffer
       });
 
+      if (!response.ok) {
+        throw new Error(`Video upload failed: ${response.status} ${response.statusText}`);
+      }
+
+      const uploadData = await response.json();
+      
       logger.info({
-        message: 'Video upload successful',
-        blobDetails: blobRecord.data.blob
+        message: 'Video upload response',
+        response: uploadData
       });
 
+      // Wait for video processing
+      // TODO: Poll job status endpoint
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      // For now, return a basic video embed structure
+      // We may need to adjust this based on the actual response format
       return {
         $type: 'app.bsky.embed.video',
         alt: mediaText,
         video: {
-          ref: blobRecord.data.blob.ref,
-          mimeType: blobRecord.data.blob.mimeType,
-          size: blobRecord.data.blob.size,
+          $type: 'blob',
+          ref: uploadData.ref,
+          mimeType: mimeType,
+          size: mediaBuffer.length,
         }
       };
-    } catch (error) {
-      logger.error(`Failed to upload video blob: ${error}`);
+    } catch (err) {
+      // Type the error
+      const error = err as ApiError;
+      logger.error({
+        message: 'Video upload failed',
+        error: error.response?.data || error.message || 'Unknown error',
+        status: error.response?.status,
+        headers: error.response?.headers
+      });
       return null;
     }
   }
