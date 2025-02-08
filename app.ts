@@ -120,7 +120,7 @@ async function main() {
         logger.warn('Skipping post - After MAX_DATE');
         break;
       }
-      const { postDate, postText, embeddedImage, mediaCount } = 
+      const { postDate, postText, embeddedMedia, mediaCount } = 
         await processPost(post);
       if( !postDate) {
         logger.warn('Skipping post - Invalid date');
@@ -131,7 +131,7 @@ async function main() {
         await new Promise((resolve) =>
           setTimeout(resolve, API_RATE_LIMIT_DELAY)
         );
-        newPostURI = await createBlueskyPost(postDate, postText, embeddedImage);
+        newPostURI = await createBlueskyPost(postDate, postText, embeddedMedia);
         if (newPostURI) {
           logger.info(`Bluesky post create with uri : ${newPostURI}`)
           importedPosts++;
@@ -144,7 +144,7 @@ async function main() {
         IG_Post: {
           message: 'Instagram Post',
           Created: `${postDate.toISOString()}`,
-          embeddedImage,
+          embeddedMedia,
           Text:
             postText.length > 50 ? postText.substring(0, 50) + '...' : postText,
         },
@@ -152,7 +152,7 @@ async function main() {
           message: 'Bluesky Post',
           Created: `${postDate.toISOString()}`,
           url: newPostURI,
-          embeddedImage,
+          embeddedMedia,
           Text:
             postText.length > 50 ? postText.substring(0, 50) + '...' : postText,
         },
@@ -183,7 +183,7 @@ async function processPost(post) {
     postDate = postDate || new Date(post.media[0].creation_timestamp * 1000);
   }
 
-  const embeddedImage: any[] = [];
+  const embeddedMedia: any[] = [];
   let mediaCount = 0;
 
   for (let j = 0; j < post.media.length; j++) {
@@ -194,32 +194,44 @@ async function processPost(post) {
       break;
     }
 
-    const { mediaText, mimeType, imageBuffer } = await processMedia(
+    const { mediaText, mimeType, mediaBuffer, isVideo } = await processMedia(
       post.media[j]
     );
     if (!mimeType) continue;
 
     if (!SIMULATE) {
       try {
-        const blobRecord = await agent.uploadBlob(imageBuffer, {
+        const blobRecord = await agent.uploadBlob(mediaBuffer, {
           encoding: mimeType,
         });
 
-        const imageMeta = await sharp(imageBuffer).metadata();
-
-        embeddedImage.push({
-          alt: mediaText,
-          image: {
-            $type: 'blob',
-            ref: blobRecord.data.blob.ref,
-            mimeType: blobRecord.data.blob.mimeType,
-            size: blobRecord.data.blob.size,
-          },
-          aspectRatio: {
+        if (isVideo) {
+          embeddedMedia.push({
+            $type: 'app.bsky.embed.video',
+            alt: mediaText,
+            video: {
+              ref: blobRecord.data.blob.ref,
+              mimeType: blobRecord.data.blob.mimeType,
+              size: blobRecord.data.blob.size,
+            }
+          });
+          break; // Only one video per post is supported
+        } else {
+          const imageMeta = await sharp(mediaBuffer).metadata();
+          embeddedMedia.push({
+            alt: mediaText,
+            image: {
+              $type: 'blob',
+              ref: blobRecord.data.blob.ref,
+              mimeType: blobRecord.data.blob.mimeType,
+              size: blobRecord.data.blob.size,
+            },
+            aspectRatio: {
               width: imageMeta.width,
               height: imageMeta.height
-          }
-        });
+            }
+          });
+        }
       } catch (error) {
         logger.error(`Failed to upload blob: ${error}`);
         continue;
@@ -237,7 +249,7 @@ async function processPost(post) {
       ) + POST_TEXT_TRUNCATE_SUFFIX;
   }
 
-  return { postDate, postText, embeddedImage, mediaCount };
+  return { postDate, postText, embeddedMedia, mediaCount };
 }
 
 async function processMedia(media) {
