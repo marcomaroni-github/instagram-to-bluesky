@@ -8,8 +8,11 @@
   },
   "scripts": {
     "start": "npx tsc && node app.js",
-    "start_log": "npx tsc && node app.js > import.log",
-    "compile": "npx tsc"
+    "start_log": "npx tsc && node ./dist/app.js > import.log",
+    "compile": "npx tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@atproto/api": "^0.13.31",

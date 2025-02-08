@@ -1,25 +1,17 @@
 import * as dotenv from 'dotenv';
 import FS from 'fs';
 import { DateTime } from 'luxon';
-import { pino } from 'pino';
 import * as process from 'process';
 import sharp from 'sharp';
 import ffprobe from '@ffprobe-installer/ffprobe';
 import ffmpeg from 'fluent-ffmpeg';
+import { pino } from 'pino';
 
 import { AtpAgent, RichText } from '@atproto/api';
+import { validateVideo } from './video';  // Import video functions
+import { logger } from './logger'; // Import shared logger
 
 dotenv.config();
-
-const logger = pino({
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-    },
-  },
-  level: process.env.LOG_LEVEL ?? 'info',
-});
 
 const agent = new AtpAgent({
   service: 'https://bsky.social',
@@ -400,7 +392,7 @@ async function processVideoPost(post) {
     return null;
   }
 
-  if (!validateVideo(mediaBuffer)) {
+  if (!validateVideo(mediaBuffer)) {  // Use imported function
     return null;
   }
 
@@ -500,15 +492,6 @@ async function processVideoPost(post) {
   return null;
 }
 
-function validateVideo(buffer) {
-  const MAX_SIZE = 100 * 1024 * 1024; // 100MB
-  if (buffer.length > MAX_SIZE) {
-    logger.warn(`Video file too large: ${Math.round(buffer.length / 1024 / 1024)}MB (max ${MAX_SIZE / 1024 / 1024}MB)`);
-    return false;
-  }
-  return true;
-}
-
 async function waitForVideoProcessing(jobId: string, did: string) {
   const maxAttempts = 10;
   const delayMs = 2000;
@@ -529,28 +512,6 @@ async function waitForVideoProcessing(jobId: string, did: string) {
   }
   
   throw new Error('Video processing timeout');
-}
-
-async function getVideoDimensions(filePath: string): Promise<{width: number, height: number}> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, metadata) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      const videoStream = metadata.streams.find(s => s.codec_type === 'video');
-      if (!videoStream) {
-        reject(new Error('No video stream found'));
-        return;
-      }
-
-      resolve({
-        width: videoStream.width || 640,
-        height: videoStream.height || 640
-      });
-    });
-  });
 }
 
 main().catch((error) => {

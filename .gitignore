@@ -17,3 +17,7 @@ archive/
 transfer/
 
 import.log
+# Manual network exports from dev tools
+*.har
+
+dist

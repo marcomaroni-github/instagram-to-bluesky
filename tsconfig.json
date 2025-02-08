@@ -8,9 +8,18 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "noImplicitAny": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"]
+    },
+    "outDir": "./dist",
+    "rootDir": "./src"
   },
   "ts-node": {
-    "esm": true
-  }
+    "esm": true,
+    "require": ["tsconfig-paths/register"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }
