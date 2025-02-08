@@ -245,16 +245,16 @@ async function processMedia(media) {
   const fileType = media.uri.substring(media.uri.lastIndexOf('.') + 1);
   const mimeType = getMimeType(fileType);
   const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${media.uri}`;
-  let imageBuffer;
+  let mediaBuffer;
 
   try {
-    imageBuffer = FS.readFileSync(mediaFilename);
+    mediaBuffer = FS.readFileSync(mediaFilename);
   } catch (error) {
     logger.error({
       message: `Failed to read media file: ${mediaFilename}`,
       error,
     });
-    return { mediaText: '', mimeType: null, imageBuffer: null };
+    return { mediaText: '', mimeType: null, mediaBuffer: null, isVideo: false };
   }
 
   let mediaText = media.title || '';
@@ -268,43 +268,59 @@ async function processMedia(media) {
   const truncatedText =
     mediaText.length > 100 ? mediaText.substring(0, 100) + '...' : mediaText;
 
+  const isVideo = mimeType.startsWith('video/');
+
   logger.info({
     message: 'Instagram Source Media',
     mimeType,
     mediaFilename,
     Created: `${mediaDate.toISOString()}`,
     Text: truncatedText.replace(/[\r\n]+/g, ' ') || 'No title',
+    Type: isVideo ? 'Video' : 'Image',
   });
 
-  return { mediaText: truncatedText, mimeType, imageBuffer };
+  return { mediaText: truncatedText, mimeType, mediaBuffer, isVideo };
 }
 
 function getMimeType(fileType) {
-  switch (fileType) {
+  switch (fileType.toLowerCase()) {
     case 'heic':
       return 'image/heic';
     case 'webp':
       return 'image/webp';
     case 'jpg':
       return 'image/jpeg';
+    case 'mp4':
+      return 'video/mp4';
+    case 'mov':
+      return 'video/quicktime';
     default:
-      logger.warn('Unsupported image file type ' + fileType);
+      logger.warn('Unsupported file type ' + fileType);
       return '';
   }
 }
 
-async function createBlueskyPost(postDate, postText, embeddedImage) {
+async function createBlueskyPost(postDate, postText, embeddedMedia) {
   const rt = new RichText({ text: postText });
   await rt.detectFacets(agent);
+  
+  // Check if we have any videos (we'll only use the first video if present)
+  const video = embeddedMedia.find(media => media.$type === 'app.bsky.embed.video');
+  
+  let embed;
+  
+  if (video) {
+    embed = { $type: 'app.bsky.embed.video', video } 
+  } else if(embeddedMedia.length > 0) {
+    embed = { $type: 'app.bsky.embed.images', images: embeddedMedia };
+  }
+
   const postRecord = {
     $type: 'app.bsky.feed.post',
     text: rt.text,
     facets: rt.facets,
     createdAt: postDate.toISOString(),
-    embed:
-      embeddedImage.length > 0
-        ? { $type: 'app.bsky.embed.images', images: embeddedImage }
-        : undefined,
+    embed
   };
 
   const recordData = await agent.post(postRecord);
