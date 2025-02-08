@@ -4,6 +4,8 @@ import { DateTime } from 'luxon';
 import { pino } from 'pino';
 import * as process from 'process';
 import sharp from 'sharp';
+import ffprobe from '@ffprobe-installer/ffprobe';
+import ffmpeg from 'fluent-ffmpeg';
 
 import { AtpAgent, RichText } from '@atproto/api';
 
@@ -46,6 +48,9 @@ interface ApiError {
   };
   message?: string;
 }
+
+// Configure ffmpeg to use ffprobe
+ffmpeg.setFfprobePath(ffprobe.path);
 
 function decodeUTF8(data: any): any {
   try {
@@ -399,13 +404,21 @@ async function processVideoPost(post) {
 
   if (!SIMULATE) {
     try {
-      // Get video dimensions using ffprobe or similar
-      const dimensions = await sharp(mediaBuffer, { pages: 1 }).metadata();
+      // Write buffer to temporary file to get dimensions
+      const tempFile = `./temp_${Date.now()}.mp4`;
+      FS.writeFileSync(tempFile, mediaBuffer);
       
+      // Get video dimensions using ffprobe
+      const dimensions = await getVideoDimensions(tempFile);
+      
+      // Clean up temp file
+      FS.unlinkSync(tempFile);
+
       logger.info({
         message: 'Attempting video upload',
         fileSize: mediaBuffer.length,
         mimeType,
+        dimensions
       });
 
       // Get the user's DID first
@@ -502,6 +515,28 @@ async function waitForVideoProcessing(jobId: string, did: string) {
   }
   
   throw new Error('Video processing timeout');
+}
+
+async function getVideoDimensions(filePath: string): Promise<{width: number, height: number}> {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      const videoStream = metadata.streams.find(s => s.codec_type === 'video');
+      if (!videoStream) {
+        reject(new Error('No video stream found'));
+        return;
+      }
+
+      resolve({
+        width: videoStream.width || 640,
+        height: videoStream.height || 640
+      });
+    });
+  });
 }
 
 main().catch((error) => {
