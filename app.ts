@@ -191,6 +191,21 @@ async function processPost(post) {
   const embeddedMedia: any[] = [];
   let mediaCount = 0;
 
+  // Check if first media is video
+  const firstMedia = post.media[0];
+  const fileType = firstMedia.uri.substring(firstMedia.uri.lastIndexOf('.') + 1);
+  const mimeType = getMimeType(fileType);
+  
+  if (mimeType.startsWith('video/')) {
+    const videoEmbed = await processVideoPost(post);
+    if (videoEmbed) {
+      embeddedMedia.push(videoEmbed);
+      mediaCount = 1;
+    }
+    return { postDate, postText, embeddedMedia, mediaCount };
+  }
+
+  // Original image processing logic
   for (let j = 0; j < post.media.length; j++) {
     if (j >= MAX_IMAGES_PER_POST) {
       logger.warn(
@@ -361,7 +376,6 @@ function calculateEstimatedTime(importedMedia) {
   return `${hours} hours and ${min} minutes`;
 }
 
-// First, let's extract the video processing logic into a separate function for testing
 async function processVideoPost(post) {
   const { mediaText, mimeType, mediaBuffer, isVideo } = await processMedia(post.media[0]);
   if (!mimeType || !isVideo) {
@@ -369,20 +383,21 @@ async function processVideoPost(post) {
     return null;
   }
 
+  if (!validateVideo(mediaBuffer)) {
+    return null;
+  }
+
   if (!SIMULATE) {
     try {
-      // Log video details before upload
       logger.info({
         message: 'Attempting video upload',
         fileSize: mediaBuffer.length,
         mimeType,
-        // Add any other relevant details
       });
 
       const blobRecord = await agent.uploadBlob(mediaBuffer, {
         encoding: mimeType,
       }).catch(error => {
-        // Enhanced error logging
         logger.error({
           message: 'Video upload failed',
           error: error.response?.data || error,
