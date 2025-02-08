@@ -16,7 +16,7 @@ const logger = pino({
       colorize: true,
     },
   },
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL ?? 'info',
 });
 
 const agent = new AtpAgent({
@@ -176,7 +176,7 @@ async function processPost(post) {
   let postDate = post.creation_timestamp
     ? new Date(post.creation_timestamp * 1000)
     : undefined;
-  let postText = post.title || '';
+  let postText = post.title ?? '';
 
   if (post.media?.length === 1) {
     postText = postText || post.media[0].title;
@@ -269,7 +269,7 @@ async function processMedia(media) {
     return { mediaText: '', mimeType: null, mediaBuffer: null, isVideo: false };
   }
 
-  let mediaText = media.title || '';
+  let mediaText = media.title ?? '';
   if (media.media_metadata?.photo_metadata?.exif_data?.length > 0) {
     const location = media.media_metadata.photo_metadata.exif_data[0];
     if (location.latitude > 0) {
@@ -312,39 +312,37 @@ function getMimeType(fileType) {
   }
 }
 
+function determineEmbed(embeddedMedia) {
+  const video = embeddedMedia.find(media => media.$type === 'app.bsky.embed.video');
+  if (video) {
+    return { $type: 'app.bsky.embed.video', video };
+  }
+  if (embeddedMedia.length > 0) {
+    return { $type: 'app.bsky.embed.images', images: embeddedMedia };
+  }
+  return undefined;
+}
+
 async function createBlueskyPost(postDate, postText, embeddedMedia) {
   const rt = new RichText({ text: postText });
   await rt.detectFacets(agent);
-  
-  // Check if we have any videos (we'll only use the first video if present)
-  const video = embeddedMedia.find(media => media.$type === 'app.bsky.embed.video');
-  
-  let embed;
-  
-  if (video) {
-    embed = { $type: 'app.bsky.embed.video', video } 
-  } else if(embeddedMedia.length > 0) {
-    embed = { $type: 'app.bsky.embed.images', images: embeddedMedia };
-  }
 
   const postRecord = {
     $type: 'app.bsky.feed.post',
     text: rt.text,
     facets: rt.facets,
     createdAt: postDate.toISOString(),
-    embed
+    embed: determineEmbed(embeddedMedia)
   };
 
   const recordData = await agent.post(postRecord);
   const i = recordData.uri.lastIndexOf('/');
   if (i > 0) {
     const rkey = recordData.uri.substring(i + 1);
-    return `https://bsky.app/profile/${process.env
-      .BLUESKY_USERNAME!}/post/${rkey}`;
-  } else {
-    logger.warn(recordData);
-    return null;
+    return `https://bsky.app/profile/${process.env.BLUESKY_USERNAME!}/post/${rkey}`;
   }
+  logger.warn(recordData);
+  return null;
 }
 
 function calculateEstimatedTime(importedMedia) {
