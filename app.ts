@@ -28,6 +28,7 @@ const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = '...';
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
+const TEST_MODE = process.env.TEST_MODE === '1';
 
 let MIN_DATE: Date | undefined = process.env.MIN_DATE
   ? new Date(process.env.MIN_DATE)
@@ -81,9 +82,13 @@ async function main() {
     });
   }
   const fInstaPosts = FS.readFileSync(
-    `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`
+    TEST_MODE 
+      ? './transfer/test_videos/posts.json'
+      : `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`
   );
-  const instaPosts = decodeUTF8(JSON.parse(fInstaPosts.toString()));
+  const instaPosts = TEST_MODE
+    ? decodeUTF8(JSON.parse(fInstaPosts.toString())).test_video_posts
+    : decodeUTF8(JSON.parse(fInstaPosts.toString()));
   let importedPosts = 0;
   let importedMedia = 0;
   let newPostURI: string | null = '';
@@ -256,7 +261,9 @@ async function processMedia(media) {
   const mediaDate = new Date(media.creation_timestamp * 1000);
   const fileType = media.uri.substring(media.uri.lastIndexOf('.') + 1);
   const mimeType = getMimeType(fileType);
-  const mediaFilename = `${process.env.ARCHIVE_FOLDER}/${media.uri}`;
+  const mediaFilename = TEST_MODE
+    ? `./transfer/test_videos/${media.uri}`
+    : `${process.env.ARCHIVE_FOLDER}/${media.uri}`;
   let mediaBuffer;
 
   try {
@@ -352,6 +359,68 @@ function calculateEstimatedTime(importedMedia) {
   const hours = Math.floor(minutes / 60);
   const min = minutes % 60;
   return `${hours} hours and ${min} minutes`;
+}
+
+// First, let's extract the video processing logic into a separate function for testing
+async function processVideoPost(post) {
+  const { mediaText, mimeType, mediaBuffer, isVideo } = await processMedia(post.media[0]);
+  if (!mimeType || !isVideo) {
+    logger.warn('Invalid video file or not a video');
+    return null;
+  }
+
+  if (!SIMULATE) {
+    try {
+      // Log video details before upload
+      logger.info({
+        message: 'Attempting video upload',
+        fileSize: mediaBuffer.length,
+        mimeType,
+        // Add any other relevant details
+      });
+
+      const blobRecord = await agent.uploadBlob(mediaBuffer, {
+        encoding: mimeType,
+      }).catch(error => {
+        // Enhanced error logging
+        logger.error({
+          message: 'Video upload failed',
+          error: error.response?.data || error,
+          status: error.response?.status,
+          headers: error.response?.headers
+        });
+        throw error;
+      });
+
+      logger.info({
+        message: 'Video upload successful',
+        blobDetails: blobRecord.data.blob
+      });
+
+      return {
+        $type: 'app.bsky.embed.video',
+        alt: mediaText,
+        video: {
+          ref: blobRecord.data.blob.ref,
+          mimeType: blobRecord.data.blob.mimeType,
+          size: blobRecord.data.blob.size,
+        }
+      };
+    } catch (error) {
+      logger.error(`Failed to upload video blob: ${error}`);
+      return null;
+    }
+  }
+  return null;
+}
+
+function validateVideo(buffer) {
+  const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+  if (buffer.length > MAX_SIZE) {
+    logger.warn(`Video file too large: ${Math.round(buffer.length / 1024 / 1024)}MB (max ${MAX_SIZE / 1024 / 1024}MB)`);
+    return false;
+  }
+  return true;
 }
 
 main().catch((error) => {

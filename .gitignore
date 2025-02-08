@@ -13,3 +13,7 @@ app.js
 archive/
 
 .DS_store
+
+transfer/
+
+import.log
