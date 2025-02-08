@@ -399,6 +399,9 @@ async function processVideoPost(post) {
 
   if (!SIMULATE) {
     try {
+      // Get video dimensions using ffprobe or similar
+      const dimensions = await sharp(mediaBuffer, { pages: 1 }).metadata();
+      
       logger.info({
         message: 'Attempting video upload',
         fileSize: mediaBuffer.length,
@@ -437,19 +440,22 @@ async function processVideoPost(post) {
       });
 
       // Wait for video processing
-      // TODO: Poll job status endpoint
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await waitForVideoProcessing(uploadData.jobId, profile.data.did);
 
-      // For now, return a basic video embed structure
-      // We may need to adjust this based on the actual response format
       return {
         $type: 'app.bsky.embed.video',
         alt: mediaText,
         video: {
           $type: 'blob',
-          ref: uploadData.ref,
+          ref: {
+            $link: uploadData.ref
+          },
           mimeType: mimeType,
           size: mediaBuffer.length,
+        },
+        aspectRatio: {
+          width: dimensions.width ?? 640,
+          height: dimensions.height ?? 640
         }
       };
     } catch (err) {
@@ -474,6 +480,28 @@ function validateVideo(buffer) {
     return false;
   }
   return true;
+}
+
+async function waitForVideoProcessing(jobId: string, did: string) {
+  const maxAttempts = 10;
+  const delayMs = 2000;
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    const response = await fetch(`https://video.bsky.app/xrpc/app.bsky.video.getUploadStatus?did=${did}&jobId=${jobId}`);
+    const status = await response.json();
+    
+    if (status.state === 'COMPLETE') {
+      return status;
+    }
+    
+    if (status.state === 'FAILED') {
+      throw new Error('Video processing failed');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+  
+  throw new Error('Video processing timeout');
 }
 
 main().catch((error) => {
