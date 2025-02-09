@@ -4,7 +4,7 @@ import * as process from "process";
 import { logger } from "./logger";
 import { BlueskyClient } from "./bluesky";
 import { processPost } from "./media";
-import { prepareVideoUpload, createVideoEmbed } from './video';
+import { prepareVideoUpload, createVideoEmbed } from "./video";
 
 dotenv.config();
 
@@ -36,36 +36,41 @@ function decodeUTF8(data: any): any {
   }
 }
 
-async function processVideoPost(filePath: string, buffer: Buffer, bluesky: BlueskyClient | null, simulate: boolean) {
+async function processVideoPost(
+  filePath: string,
+  buffer: Buffer,
+  bluesky: BlueskyClient | null,
+  simulate: boolean
+) {
   try {
     if (!buffer) {
-      throw new Error('Video buffer is undefined');
+      throw new Error("Video buffer is undefined");
     }
 
     logger.debug({
       message: "Processing video",
       fileSize: buffer.length,
-      filePath
+      filePath,
     });
 
     // Prepare video metadata
     const videoData = await prepareVideoUpload(filePath, buffer);
-    
+
     // Upload video to get CID
     if (!simulate && bluesky) {
       const blob = await bluesky.uploadVideo(buffer);
       if (!blob?.ref?.$link) {
-        throw new Error('Failed to get video upload reference');
+        throw new Error("Failed to get video upload reference");
       }
       videoData.ref = blob.ref.$link;
     }
-    
+
     // Create video embed structure
     const videoEmbed = createVideoEmbed(videoData);
-    
+
     return videoEmbed;
   } catch (error) {
-    logger.error('Failed to process video:', error);
+    logger.error("Failed to process video:", error);
     throw error;
   }
 }
@@ -162,25 +167,29 @@ export async function main() {
         break;
       }
 
-      const { postDate, postText, mediaCount, embeddedMedia: initialMedia } = await processPost(
-        post,
-        TEST_VIDEO_MODE ? "./transfer/test_videos" : 
-        TEST_IMAGE_MODE ? "./transfer/test_images" : 
-        process.env.ARCHIVE_FOLDER!,
-        TEST_VIDEO_MODE || TEST_IMAGE_MODE,
-        SIMULATE
-      );
+      const getArchiveFolder = () => {
+        if (TEST_VIDEO_MODE) return "./transfer/test_videos";
+        if (TEST_IMAGE_MODE) return "./transfer/test_images";
+        return process.env.ARCHIVE_FOLDER!;
+      };
+
+      const {
+        postDate,
+        postText,
+        mediaCount,
+        embeddedMedia: initialMedia,
+      } = await processPost(post, getArchiveFolder(), SIMULATE);
       let embeddedMedia: any = initialMedia;
 
       logger.debug({
         message: "Processing post media",
         mediaType: post.media[0].type,
         initialMediaPresent: !!initialMedia,
-        mediaCount
+        mediaCount,
       });
 
       // Handle video if present
-      if (post.media[0].type === 'Video') {
+      if (post.media[0].type === "Video") {
         try {
           const videoEmbed = await processVideoPost(
             post.media[0].media_url,
@@ -191,17 +200,19 @@ export async function main() {
           embeddedMedia = videoEmbed;
           logger.debug({
             message: "Video processing complete",
-            hasVideoEmbed: !!videoEmbed
+            hasVideoEmbed: !!videoEmbed,
           });
         } catch (error) {
-          logger.error('Failed to process video:', error);
+          logger.error("Failed to process video:", error);
           continue; // Skip this post if video processing fails
         }
       } else {
         logger.debug({
           message: "Using photo media from processPost",
           mediaType: "photo",
-          embeddedMediaLength: Array.isArray(embeddedMedia) ? embeddedMedia.length : 0
+          embeddedMediaLength: Array.isArray(embeddedMedia)
+            ? embeddedMedia.length
+            : 0,
         });
       }
 

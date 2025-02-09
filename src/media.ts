@@ -38,13 +38,11 @@ export function getMimeType(fileType: string): string {
   }
 }
 
-export async function processMedia(media: any, archiveFolder: string, testMode: boolean): Promise<MediaProcessResult> {
+export async function processMedia(media: any, archiveFolder: string): Promise<MediaProcessResult> {
   const mediaDate = new Date(media.creation_timestamp * 1000);
   const fileType = media.uri.substring(media.uri.lastIndexOf('.') + 1);
   const mimeType = getMimeType(fileType);
-  const mediaFilename = testMode
-    ? `./transfer/test_videos/${media.uri}`
-    : `${archiveFolder}/${media.uri}`;
+  const mediaFilename =  `${archiveFolder}/${media.uri}`;
   
   let mediaBuffer;
   try {
@@ -82,7 +80,7 @@ export async function processMedia(media: any, archiveFolder: string, testMode: 
   return { mediaText: truncatedText, mimeType, mediaBuffer, isVideo };
 }
 
-export async function processPost(post: any, archiveFolder: string, testMode: boolean, simulate: boolean): Promise<ProcessedPost> {
+export async function processPost(post: any, archiveFolder: string, simulate: boolean): Promise<ProcessedPost> {
   let postDate = post.creation_timestamp
     ? new Date(post.creation_timestamp * 1000)
     : undefined;
@@ -106,9 +104,7 @@ export async function processPost(post: any, archiveFolder: string, testMode: bo
 
     const { mediaText, mimeType, mediaBuffer, isVideo } = await processMedia(
       post.media[j],
-      archiveFolder,
-      testMode
-    );
+      archiveFolder);
     
     if (!mimeType || !mediaBuffer) continue;
 
