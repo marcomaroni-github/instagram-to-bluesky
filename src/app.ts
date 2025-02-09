@@ -138,13 +138,18 @@ export async function main() {
         break;
       }
 
-      const { postDate, postText, embeddedMedia, mediaCount } =
-        await processPost(
-          post,
-          process.env.ARCHIVE_FOLDER!,
-          TEST_MODE,
-          SIMULATE
-        );
+      const { postDate, postText, mediaCount } = await processPost(
+        post,
+        process.env.ARCHIVE_FOLDER!,
+        TEST_MODE,
+        SIMULATE
+      );
+      let { embeddedMedia } = await processPost(
+        post,
+        process.env.ARCHIVE_FOLDER!,
+        TEST_MODE,
+        SIMULATE
+      );
 
       if (!postDate) {
         logger.warn("Skipping post - Invalid date");
@@ -152,8 +157,7 @@ export async function main() {
       }
 
       if (post.media[0].type === 'Video') {
-        const videoEmbed = await processVideoPost(post.media[0].media_url, post.media[0].video_buffer);
-        embeddedMedia = videoEmbed;
+        embeddedMedia = await processVideoPost(post.media[0].media_url, post.media[0].video_buffer);
       }
 
       if (!SIMULATE && bluesky) {
