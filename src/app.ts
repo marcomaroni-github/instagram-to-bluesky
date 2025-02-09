@@ -73,7 +73,8 @@ async function processVideoPost(filePath: string, buffer: Buffer, bluesky: Blues
 export async function main() {
   // Set environment variables within function scope, allows mocked unit testing.
   const SIMULATE = process.env.SIMULATE === "1";
-  const TEST_MODE = process.env.TEST_MODE === "1";
+  const TEST_VIDEO_MODE = process.env.TEST_VIDEO_MODE === "1";
+  const TEST_IMAGE_MODE = process.env.TEST_IMAGE_MODE === "1";
   let MIN_DATE: Date | undefined = process.env.MIN_DATE
     ? new Date(process.env.MIN_DATE)
     : undefined;
@@ -103,18 +104,25 @@ export async function main() {
     logger.warn("--- SIMULATE mode is enabled, no posts will be imported ---");
   }
 
-  const fInstaPosts = FS.readFileSync(
-    TEST_MODE
-      ? "./transfer/test_videos/posts.json"
-      : `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`
-  );
+  let postsJsonPath: string;
+  if (TEST_VIDEO_MODE) {
+    postsJsonPath = "./transfer/test_videos/posts.json";
+    logger.info("--- TEST VIDEO mode is enabled, using test video content ---");
+  } else if (TEST_IMAGE_MODE) {
+    postsJsonPath = "./transfer/test_images/posts.json";
+    logger.info("--- TEST IMAGE mode is enabled, using test image content ---");
+  } else {
+    postsJsonPath = `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`;
+  }
+
+  const fInstaPosts = FS.readFileSync(postsJsonPath);
 
   const instaPosts = decodeUTF8(JSON.parse(fInstaPosts.toString()));
 
   let importedPosts = 0;
   let importedMedia = 0;
 
-  if (TEST_MODE) {
+  if (TEST_VIDEO_MODE || TEST_IMAGE_MODE) {
     logger.info("--- TEST mode is enabled, skipping video processing ---");
   }
 
@@ -156,8 +164,10 @@ export async function main() {
 
       const { postDate, postText, mediaCount, embeddedMedia: initialMedia } = await processPost(
         post,
+        TEST_VIDEO_MODE ? "./transfer/test_videos" : 
+        TEST_IMAGE_MODE ? "./transfer/test_images" : 
         process.env.ARCHIVE_FOLDER!,
-        TEST_MODE,
+        TEST_VIDEO_MODE || TEST_IMAGE_MODE,
         SIMULATE
       );
       let embeddedMedia: any = initialMedia;

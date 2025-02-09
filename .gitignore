@@ -14,7 +14,7 @@ archive/
 
 .DS_store
 
-transfer/
+transfer/instagram*
 
 import.log
 # Manual network exports from dev tools
