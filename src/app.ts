@@ -38,12 +38,25 @@ function decodeUTF8(data: any): any {
 
 async function processVideoPost(filePath: string, buffer: Buffer, bluesky: BlueskyClient | null, simulate: boolean) {
   try {
+    if (!buffer) {
+      throw new Error('Video buffer is undefined');
+    }
+
+    logger.debug({
+      message: "Processing video",
+      fileSize: buffer.length,
+      filePath
+    });
+
     // Prepare video metadata
     const videoData = await prepareVideoUpload(filePath, buffer);
     
     // Upload video to get CID
     if (!simulate && bluesky) {
       const blob = await bluesky.uploadVideo(buffer);
+      if (!blob?.ref?.$link) {
+        throw new Error('Failed to get video upload reference');
+      }
       videoData.ref = blob.ref.$link;
     }
     
@@ -141,26 +154,45 @@ export async function main() {
         break;
       }
 
-      const { postDate, postText, mediaCount } = await processPost(
+      const { postDate, postText, mediaCount, embeddedMedia: initialMedia } = await processPost(
         post,
         process.env.ARCHIVE_FOLDER!,
         TEST_MODE,
         SIMULATE
       );
-      let embeddedMedia: any = [];
+      let embeddedMedia: any = initialMedia;
 
-      // Supports single video media or multiple images.
+      logger.debug({
+        message: "Processing post media",
+        mediaType: post.media[0].type,
+        initialMediaPresent: !!initialMedia,
+        mediaCount
+      });
+
+      // Handle video if present
       if (post.media[0].type === 'Video') {
-        const videoEmbed = await processVideoPost(post.media[0].media_url, post.media[0].video_buffe, bluesky, SIMULATE);
-        embeddedMedia = videoEmbed;
+        try {
+          const videoEmbed = await processVideoPost(
+            post.media[0].media_url,
+            post.media[0].buffer,
+            bluesky,
+            SIMULATE
+          );
+          embeddedMedia = videoEmbed;
+          logger.debug({
+            message: "Video processing complete",
+            hasVideoEmbed: !!videoEmbed
+          });
+        } catch (error) {
+          logger.error('Failed to process video:', error);
+          continue; // Skip this post if video processing fails
+        }
       } else {
-        const postData = await processPost(
-          post,
-          process.env.ARCHIVE_FOLDER!,
-          TEST_MODE,
-          SIMULATE
-        );
-        embeddedMedia = postData.embeddedMedia;
+        logger.debug({
+          message: "Using photo media from processPost",
+          mediaType: "photo",
+          embeddedMediaLength: Array.isArray(embeddedMedia) ? embeddedMedia.length : 0
+        });
       }
 
       if (!postDate) {
