@@ -36,13 +36,13 @@ function decodeUTF8(data: any): any {
   }
 }
 
-async function processVideoPost(filePath: string, buffer: Buffer) {
+async function processVideoPost(filePath: string, buffer: Buffer, bluesky: BlueskyClient | null, simulate: boolean) {
   try {
     // Prepare video metadata
     const videoData = await prepareVideoUpload(filePath, buffer);
     
     // Upload video to get CID
-    if (!SIMULATE && bluesky) {
+    if (!simulate && bluesky) {
       const blob = await bluesky.uploadVideo(buffer);
       videoData.ref = blob.ref.$link;
     }
@@ -151,7 +151,7 @@ export async function main() {
 
       // Supports single video media or multiple images.
       if (post.media[0].type === 'Video') {
-        const videoEmbed = await processVideoPost(post.media[0].media_url, post.media[0].video_buffer);
+        const videoEmbed = await processVideoPost(post.media[0].media_url, post.media[0].video_buffe, bluesky, SIMULATE);
         embeddedMedia = videoEmbed;
       } else {
         const postData = await processPost(
