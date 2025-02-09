@@ -1,4 +1,4 @@
-import { ImageEmbed, VideoEmbed } from './bluesky';
+import { ImageEmbed, VideoEmbed, ImageEmbedImpl } from './bluesky';
 import { logger } from './logger';
 import { validateVideo } from './video';
 import FS from 'fs';
@@ -122,12 +122,20 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
         mimeType
       } as VideoEmbed;
     } else {
-      (embeddedMedia as ImageEmbed[]).push({
-        $type: 'app.bsky.embed.images#image',
-        alt: mediaText,
-        image: mediaBuffer,
-        mimeType
-      } as ImageEmbed);
+      try{
+        if(Array.isArray(embeddedMedia)) {
+          embeddedMedia.push(
+            new ImageEmbedImpl(mediaText, mediaBuffer, mimeType)
+          );
+        } else {
+          logger.error('Embedded media is not an array!!!');
+          logger.debug('Embedded media present instead of an array?', embeddedMedia);
+        }
+      } catch (error) {
+        logger.error('Failed to push image into embedded media', error);
+        logger.debug('Embedded media present instead of an array?', embeddedMedia);
+        throw error;
+      }
     }
 
     mediaCount++;
