@@ -7,20 +7,28 @@
     "node": ">=20.12.0"
   },
   "scripts": {
-    "start": "npx tsc && node app.js",
-    "start_log": "npx tsc && node app.js > import.log",
-    "compile": "npx tsc"
+    "start": "npx tsc --sourceMap && node ./dist/main.js",
+    "start_log": "npm run start > import.log",
+    "compile": "npx tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@atproto/api": "^0.13.31",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
     "dotenv": "^16.4.7",
+    "fluent-ffmpeg": "^2.1.3",
     "luxon": "^3.5.0",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
-    "process": "^0.11.10",
-    "sharp": "^0.33.5"
+    "process": "^0.11.10"
   },
   "devDependencies": {
-    "@types/node": "^22.10.10"
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.10",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
   }
 }

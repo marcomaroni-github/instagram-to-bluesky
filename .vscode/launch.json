@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Program",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/src/main.ts",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "sourceMaps": true,
+      "nodeVersionHint": 22,
+      "env": {
+        "NODE_OPTIONS": "--experimental-fetch"
+      },
+      "runtimeArgs": ["--experimental-fetch"]
+    }
+  ]
+} 

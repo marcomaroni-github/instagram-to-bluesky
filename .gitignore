@@ -13,3 +13,11 @@ app.js
 archive/
 
 .DS_store
+
+transfer/instagram*
+
+import.log
+# Manual network exports from dev tools
+*.har
+
+dist
