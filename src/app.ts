@@ -1,11 +1,12 @@
-import * as dotenv from "dotenv";
-import FS from "fs";
-import * as process from "process";
-import { logger } from "./logger";
-import { BlueskyClient } from "./bluesky";
-import { processPost } from "./media";
-import { prepareVideoUpload, createVideoEmbed } from "./video";
-import path from "path";
+import * as dotenv from 'dotenv';
+import FS from 'fs';
+import path from 'path';
+import * as process from 'process';
+
+import { BlueskyClient } from './bluesky';
+import { logger } from './logger';
+import { processPost } from './media';
+import { createVideoEmbed, prepareVideoUpload } from './video';
 
 dotenv.config();
 
@@ -51,7 +52,7 @@ export function getArchiveFolder(
 
   if (TEST_VIDEO_MODE) return path.join(rootDir, "transfer/test_videos");
   if (TEST_IMAGE_MODE) return path.join(rootDir, "transfer/test_images");
-  return path.join(rootDir, process.env.ARCHIVE_FOLDER!);
+  return process.env.ARCHIVE_FOLDER!;
 }
 
 async function processVideoPost(

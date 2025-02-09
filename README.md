@@ -50,7 +50,7 @@ BLUESKY_USERNAME=username.bsky.social
 # App Password from Bluesky settings
 BLUESKY_PASSWORD=your-password
 # Path to your unzipped Instagram archive
-ARCHIVE_FOLDER=./transfer/instagram-username-2025-XX-XX-hash
+ARCHIVE_FOLDER=c:/download/instagram-username-2025-XX-XX-hash
 
 # Optional settings
 SIMULATE=1                # Set to 1 to simulate import without posting
