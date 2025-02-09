@@ -1,6 +1,33 @@
 import { AtpAgent, RichText, BlobRef } from '@atproto/api';
 import { logger } from './logger';
 
+export interface VideoEmbed {
+  $type: 'app.bsky.embed.video';
+  alt: string;
+  buffer: Buffer;
+  mimeType: string;
+  aspectRatio?: { width: number; height: number };
+  video?: {
+    ref: BlobRef;
+    mimeType: string;
+    size: number;
+  };
+}
+
+export interface ImageEmbed {
+  $type: 'app.bsky.embed.images#image';
+  alt: string;
+  image: Buffer | BlobRef;
+  mimeType: string;
+}
+
+export interface ImagesEmbed {
+  $type: 'app.bsky.embed.images';
+  images: ImageEmbed[];
+}
+
+type EmbeddedMedia = VideoEmbed | ImageEmbed[] | ImagesEmbed;
+
 export class BlueskyClient {
   private readonly agent: AtpAgent;
   private readonly username: string;
@@ -98,13 +125,45 @@ export class BlueskyClient {
     }
   }
 
-  async createPost(postDate: Date, postText: string, embeddedMedia: any): Promise<string | null> {
+  private determineEmbed(embeddedMedia: EmbeddedMedia) {
+    if (!embeddedMedia) return undefined;
+
+    // Handle video embed
+    if (!Array.isArray(embeddedMedia) && embeddedMedia.$type === 'app.bsky.embed.video') {
+      return {
+        $type: 'app.bsky.embed.video',
+        video: {
+          $type: 'blob',
+          ref: embeddedMedia.video!.ref,
+          mimeType: embeddedMedia.mimeType,
+          size: embeddedMedia.video!.size
+        },
+        aspectRatio: embeddedMedia.aspectRatio
+      };
+    }
+
+    // Handle image embed(s)
+    if (Array.isArray(embeddedMedia) && embeddedMedia.length > 0) {
+      return {
+        $type: 'app.bsky.embed.images',
+        images: embeddedMedia.map(img => ({
+          $type: 'app.bsky.embed.images#image',
+          alt: img.alt,
+          image: img.image as BlobRef // At this point it should be a BlobRef
+        }))
+      };
+    }
+
+    return undefined;
+  }
+
+  async createPost(postDate: Date, postText: string, embeddedMedia: EmbeddedMedia): Promise<string | null> {
     try {
       // Handle image uploads if present
       if (Array.isArray(embeddedMedia)) {
         const uploadedImages = await Promise.all(
-          embeddedMedia.map(async (media) => {
-            const blob = await this.uploadImage(media.image, media.mimeType);
+          embeddedMedia.map(async (media: ImageEmbed) => {
+            const blob = await this.uploadImage(media.image as Buffer, media.mimeType);
             return {
               $type: 'app.bsky.embed.images#image',
               alt: media.alt,
@@ -116,10 +175,9 @@ export class BlueskyClient {
         embeddedMedia = {
           $type: 'app.bsky.embed.images',
           images: uploadedImages
-        };
+        } as ImagesEmbed;
       }
 
-      // Rest of the existing createPost code...
       const rt = new RichText({ text: postText });
       await rt.detectFacets(this.agent);
 
@@ -128,7 +186,7 @@ export class BlueskyClient {
         text: rt.text,
         facets: rt.facets,
         createdAt: postDate.toISOString(),
-        embed: embeddedMedia
+        embed: this.determineEmbed(embeddedMedia)
       };
 
       const recordData = await this.agent.post(postRecord);
@@ -143,30 +201,5 @@ export class BlueskyClient {
       logger.error('Failed to create post:', error);
       return null;
     }
-  }
-
-  private determineEmbed(embeddedMedia: any) {
-    if (!embeddedMedia) return undefined;
-
-    // Handle video embed
-    if (embeddedMedia.$type === 'app.bsky.embed.video') {
-      return {
-        $type: 'app.bsky.embed.video',
-        video: {
-          $type: 'blob',
-          ref: embeddedMedia.video.ref,
-          mimeType: embeddedMedia.video.mimeType,
-          size: embeddedMedia.video.size
-        },
-        aspectRatio: embeddedMedia.aspectRatio
-      };
-    }
-
-    // Handle image embed(s)
-    if (Array.isArray(embeddedMedia) && embeddedMedia.length > 0) {
-      return { $type: 'app.bsky.embed.images', images: embeddedMedia };
-    }
-
-    return undefined;
   }
 } 

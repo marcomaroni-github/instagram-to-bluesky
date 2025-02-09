@@ -1,3 +1,4 @@
+import { ImageEmbed, VideoEmbed } from './bluesky';
 import { logger } from './logger';
 import { validateVideo } from './video';
 import FS from 'fs';
@@ -12,7 +13,7 @@ export interface MediaProcessResult {
 export interface ProcessedPost {
   postDate: Date | null;
   postText: string;
-  embeddedMedia: any[];
+  embeddedMedia: VideoEmbed | ImageEmbed[];
   mediaCount: number;
 }
 
@@ -91,7 +92,7 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
     postDate = postDate || new Date(post.media[0].creation_timestamp * 1000);
   }
 
-  const embeddedMedia: any[] = [];
+  let embeddedMedia: VideoEmbed | ImageEmbed[] = [];
   let mediaCount = 0;
 
   for (let j = 0; j < post.media.length; j++) {
@@ -114,18 +115,19 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
 
     // Add media object for both simulate and real mode
     if (isVideo) {
-      embeddedMedia.push({
+      embeddedMedia = {
         $type: 'app.bsky.embed.video',
         alt: mediaText,
         buffer: mediaBuffer,
         mimeType
-      });
+      } as VideoEmbed;
     } else {
-      embeddedMedia.push({
+      (embeddedMedia as ImageEmbed[]).push({
+        $type: 'app.bsky.embed.images#image',
         alt: mediaText,
         image: mediaBuffer,
         mimeType
-      });
+      } as ImageEmbed);
     }
 
     mediaCount++;
