@@ -87,11 +87,11 @@ export class BlueskyClient {
       logger.debug('Uploading image...');
       const response = await this.agent.uploadBlob(buffer, { encoding: mimeType });
       
-      if (!response?.blob) {
+      if (!response?.data?.blob) {
         throw new Error('Failed to get image upload reference');
       }
 
-      return response.blob;
+      return response.data.blob;
     } catch (error) {
       logger.error('Failed to upload image:', error);
       throw error;
@@ -131,7 +131,14 @@ export class BlueskyClient {
         embed: embeddedMedia
       };
 
-      // ... rest of the existing code ...
+      const recordData = await this.agent.post(postRecord);
+      const i = recordData.uri.lastIndexOf('/');
+      if (i > 0) {
+        const rkey = recordData.uri.substring(i + 1);
+        return `https://bsky.app/profile/${this.username}/post/${rkey}`;
+      }
+      logger.warn(recordData);
+      return null;
     } catch (error) {
       logger.error('Failed to create post:', error);
       return null;
