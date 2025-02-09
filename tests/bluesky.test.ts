@@ -3,7 +3,10 @@ import { BlueskyClient } from '../src/bluesky';
 jest.mock('@atproto/api', () => ({
   AtpAgent: jest.fn().mockImplementation(() => ({
     login: jest.fn(),
-    post: jest.fn().mockResolvedValue({ uri: 'test/uri/123' }),
+    post: jest.fn().mockResolvedValue({ uri: 'at://did:plc:test/app.bsky.feed.post/123' }),
+    uploadBlob: jest.fn().mockResolvedValue({ 
+      data: { blob: { $type: 'blob', ref: { $link: 'test-blob-ref' } } }
+    }),
     api: {
       app: {
         bsky: {
@@ -83,14 +86,10 @@ describe('BlueskyClient', () => {
   test('should create video post successfully', async () => {
     const videoEmbed = {
       $type: 'app.bsky.embed.video',
-      video: {
-        $type: 'blob',
-        ref: { $link: '' }, // Empty ref to trigger upload
-        mimeType: 'video/mp4',
-        size: 1000,
-        buffer: Buffer.from('test video') // Add buffer for upload
-      },
-      aspectRatio: { width: 640, height: 480 }
+      alt: 'test video',
+      buffer: Buffer.from('test video'),
+      mimeType: 'video/mp4',
+      size: 1000
     };
 
     const postUrl = await client.createPost(
@@ -99,7 +98,7 @@ describe('BlueskyClient', () => {
       videoEmbed
     );
 
-    expect(postUrl).toContain('https://bsky.app/profile/test-user/post/');
+    expect(postUrl).toContain('https://bsky.app/profile/test-user/post/123');
   });
 
   xtest('should handle video upload timeout', async () => {
