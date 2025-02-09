@@ -7,8 +7,8 @@
     "node": ">=20.12.0"
   },
   "scripts": {
-    "start": "npx tsc && node app.js",
-    "start_log": "npx tsc && node ./dist/app.js > import.log",
+    "start": "npx tsc --sourceMap && node main.js",
+    "start_log": "npx tsc --sourceMap && node ./dist/main.js > import.log",
     "compile": "npx tsc",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -28,6 +28,8 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.10",
-    "ts-jest": "^29.2.5"
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
   }
 }
