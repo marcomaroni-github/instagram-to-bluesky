@@ -90,11 +90,24 @@ async function processVideoPost(
   }
 }
 
+/**
+ * Validates test mode configuration
+ * @throws Error if both test modes are enabled
+ */
+function validateTestConfig(TEST_VIDEO_MODE: boolean, TEST_IMAGE_MODE: boolean) {
+  if (TEST_VIDEO_MODE && TEST_IMAGE_MODE) {
+    throw new Error('Cannot enable both TEST_VIDEO_MODE and TEST_IMAGE_MODE simultaneously');
+  }
+}
+
 export async function main() {
   // Set environment variables within function scope, allows mocked unit testing.
   const SIMULATE = process.env.SIMULATE === "1";
   const TEST_VIDEO_MODE = process.env.TEST_VIDEO_MODE === "1";
   const TEST_IMAGE_MODE = process.env.TEST_IMAGE_MODE === "1";
+
+  validateTestConfig(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
+
   let MIN_DATE: Date | undefined = process.env.MIN_DATE
     ? new Date(process.env.MIN_DATE)
     : undefined;
