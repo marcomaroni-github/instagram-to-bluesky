@@ -25,7 +25,19 @@ export class BlueskyClient {
   async uploadVideo(buffer: Buffer, mimeType: string = 'video/mp4'): Promise<BlobRef> {
     try {
       logger.debug('Uploading video file...');
-      const response = await this.agent.uploadBlob(buffer, { encoding: mimeType });
+      
+      // Upload blob with proper encoding and headers
+      const response = await this.agent.api.com.atproto.repo.uploadBlob(buffer, {
+        encoding: mimeType,
+        headers: {
+          'Content-Type': mimeType
+        }
+      });
+
+      if (!response?.data?.blob) {
+        throw new Error('Failed to get blob reference from upload');
+      }
+
       logger.debug(`Video uploaded with blob: ${response.data.blob.ref.$link}`);
       return response.data.blob;
     } catch (error) {

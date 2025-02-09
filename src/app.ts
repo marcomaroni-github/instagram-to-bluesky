@@ -41,8 +41,11 @@ async function processVideoPost(filePath: string, buffer: Buffer) {
     // Prepare video metadata
     const videoData = await prepareVideoUpload(filePath, buffer);
     
-    // Upload video to get CID (this would be handled by your BlueskyClient)
-    // videoData.ref = await bluesky.uploadVideo(buffer);
+    // Upload video to get CID
+    if (!SIMULATE && bluesky) {
+      const blob = await bluesky.uploadVideo(buffer);
+      videoData.ref = blob.ref.$link;
+    }
     
     // Create video embed structure
     const videoEmbed = createVideoEmbed(videoData);
