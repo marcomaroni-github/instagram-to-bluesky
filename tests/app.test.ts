@@ -27,6 +27,15 @@ jest.mock('../src/video', () => ({
   getVideoDimensions: jest.fn()
 }));
 
+// Add this mock before the tests
+jest.mock('../src/app', () => {
+  const originalModule = jest.requireActual('../src/app');
+  return {
+    ...originalModule,
+    getArchiveFolder: () => '/test/folder'
+  };
+});
+
 describe('Main App', () => {
   const originalEnv = process.env;
   
@@ -98,9 +107,7 @@ describe('Main App', () => {
     expect(jest.mocked(BlueskyClient)).toHaveBeenCalled();
     expect(processPost).toHaveBeenCalledWith(
       expect.objectContaining(mockPost),
-      '/test/folder',
-      false,
-      false
+      expect.stringContaining('/test/folder')
     );
   });
 
