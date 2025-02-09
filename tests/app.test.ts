@@ -63,7 +63,7 @@ describe('Main App', () => {
     process.env = originalEnv;
   });
 
-  xtest('should process posts in simulate mode', async () => {
+  test('should process posts in simulate mode', async () => {
     process.env.SIMULATE = '1';
     
     await main();
@@ -97,7 +97,7 @@ describe('Main App', () => {
     );
   });
 
-  xtest('should handle date filtering with MIN_DATE', async () => {
+  test('should handle date filtering with MIN_DATE', async () => {
     process.env.MIN_DATE = '2024-01-01';
     
     const oldPost = {
@@ -114,11 +114,11 @@ describe('Main App', () => {
     await main();
 
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringMatching(/Before MIN_DATE.*Jan 1, 2023/)
+      'Skipping post - Before MIN_DATE: [Sun, 01 Jan 2023 00:00:00 GMT]'
     );
   });
 
-  xtest('should handle date filtering with MAX_DATE', async () => {
+  test('should handle date filtering with MAX_DATE', async () => {
     process.env.MAX_DATE = '2024-01-01';
     
     const futurePost = {
@@ -134,7 +134,7 @@ describe('Main App', () => {
 
     await main();
 
-    expect(logger.warn).toHaveBeenCalledWith('Skipping post - After MAX_DATE');
+    expect(logger.warn).toHaveBeenCalledWith('Skipping post - After MAX_DATE [Wed, 01 Jan 2025 00:00:00 GMT]');
   });
 
   test('should handle posts with missing dates', async () => {
@@ -158,7 +158,7 @@ describe('Main App', () => {
     await expect(main()).rejects.toThrow('File read error');
   });
 
-  xtest('should handle Bluesky posting errors', async () => {
+  test('should handle Bluesky posting errors', async () => {
     const mockPost = {
       creation_timestamp: Date.now() / 1000,
       title: 'Test Post',
@@ -178,7 +178,7 @@ describe('Main App', () => {
     );
   });
 
-  xtest('should calculate correct estimated time in simulate mode', async () => {
+  test('should calculate correct estimated time in simulate mode', async () => {
     process.env.SIMULATE = '1';
     
     const mockPost = {
@@ -205,4 +205,4 @@ describe('Main App', () => {
       expect.stringContaining('Estimated time for real import')
     );
   });
-}); 
+});

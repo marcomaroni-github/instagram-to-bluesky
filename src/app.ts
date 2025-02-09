@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
 import FS from 'fs';
-import { DateTime } from 'luxon';
 import * as process from 'process';
 import { logger } from './logger';
 import { BlueskyClient } from './bluesky';
@@ -8,16 +7,7 @@ import { processPost } from './media';
 
 dotenv.config();
 
-const SIMULATE = process.env.SIMULATE === '1';
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
-const TEST_MODE = process.env.TEST_MODE === '1';
-
-let MIN_DATE: Date | undefined = process.env.MIN_DATE
-  ? new Date(process.env.MIN_DATE)
-  : undefined;
-let MAX_DATE: Date | undefined = process.env.MAX_DATE
-  ? new Date(process.env.MAX_DATE)
-  : undefined;
 
 function decodeUTF8(data: any): any {
   try {
@@ -46,6 +36,16 @@ function decodeUTF8(data: any): any {
 }
 
 export async function main() {
+  // Set environment variables within function scope, allows mocked unit testing.
+  const SIMULATE = process.env.SIMULATE === '1';
+  const TEST_MODE = process.env.TEST_MODE === '1';
+  let MIN_DATE: Date | undefined = process.env.MIN_DATE
+  ? new Date(process.env.MIN_DATE)
+  : undefined;
+  let MAX_DATE: Date | undefined = process.env.MAX_DATE
+    ? new Date(process.env.MAX_DATE)
+    : undefined;
+
   logger.info(`Import started at ${new Date().toISOString()}`);
   logger.info({
     SourceFolder: process.env.ARCHIVE_FOLDER,
@@ -89,7 +89,7 @@ export async function main() {
     });
 
     for (const post of sortedPosts) {
-      let checkDate;
+      let checkDate: Date | undefined;
       if (post.creation_timestamp) {
         checkDate = new Date(post.creation_timestamp * 1000);
       } else if (post.media[0].creation_timestamp) {
@@ -103,17 +103,15 @@ export async function main() {
         continue;
       }
 
-      if (MIN_DATE && checkDate < MIN_DATE) {
+      if (MIN_DATE && checkDate && checkDate < MIN_DATE) {
         logger.warn(
-          `Skipping post - Before MIN_DATE: [${DateTime.fromJSDate(
-            checkDate
-          ).toLocaleString(DateTime.DATE_MED)}]`
+          `Skipping post - Before MIN_DATE: [${checkDate.toUTCString()}]`
         );
         continue;
       }
 
       if (MAX_DATE && checkDate > MAX_DATE) {
-        logger.warn('Skipping post - After MAX_DATE');
+        logger.warn(`Skipping post - After MAX_DATE [${checkDate.toUTCString()}]`);
         break;
       }
 
@@ -127,11 +125,16 @@ export async function main() {
 
       if (!SIMULATE && bluesky) {
         await new Promise((resolve) => setTimeout(resolve, API_RATE_LIMIT_DELAY));
-        const postUrl = await bluesky.createPost(postDate, postText, embeddedMedia);
-        
-        if (postUrl) {
-          logger.info(`Bluesky post created with url: ${postUrl}`);
-          importedPosts++;
+        try {
+          const postUrl = await bluesky.createPost(postDate, postText, embeddedMedia);
+          
+          if (postUrl) {
+            logger.info(`Bluesky post created with url: ${postUrl}`);
+            importedPosts++;
+          }
+        } catch (error) {
+          logger.error(`Failed to create Bluesky post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          // Continue with the next post even if this one failed
         }
       } else {
         importedPosts++;
