@@ -87,7 +87,23 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
     : undefined;
   let postText = post.title ?? '';
 
-  if (post.media?.length === 1) {
+  if (postText.length > POST_TEXT_LIMIT) {
+    postText = postText.substring(
+      0,
+      POST_TEXT_LIMIT - POST_TEXT_TRUNCATE_SUFFIX.length
+    ) + POST_TEXT_TRUNCATE_SUFFIX;
+  }
+
+  if (!post.media?.length) {
+    return { 
+      postDate: postDate || null, 
+      postText, 
+      embeddedMedia: [], 
+      mediaCount: 0 
+    };
+  }
+
+  if (post.media.length === 1) {
     postText = postText || post.media[0].title;
     postDate = postDate || new Date(post.media[0].creation_timestamp * 1000);
   }
@@ -95,6 +111,21 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
   let embeddedMedia: VideoEmbed | ImageEmbed[] = [];
   let mediaCount = 0;
 
+  // If first media is video, process only that
+  const firstMedia = await processMedia(post.media[0], archiveFolder);
+  if (firstMedia.isVideo) {
+    if (firstMedia.mimeType && firstMedia.mediaBuffer && validateVideo(firstMedia.mediaBuffer)) {
+      embeddedMedia = new VideoEmbedImpl(
+        firstMedia.mediaText,
+        firstMedia.mediaBuffer,
+        firstMedia.mimeType
+      );
+      mediaCount = 1;
+    }
+    return { postDate: postDate || null, postText, embeddedMedia, mediaCount };
+  }
+
+  // Otherwise process images
   for (let j = 0; j < post.media.length; j++) {
     if (j >= MAX_IMAGES_PER_POST) {
       logger.warn(
@@ -107,45 +138,12 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
       post.media[j],
       archiveFolder);
     
-    if (!mimeType || !mediaBuffer) continue;
+    if (!mimeType || !mediaBuffer || isVideo) continue;
 
-    if (isVideo && !validateVideo(mediaBuffer)) {
-      continue;
-    }
-
-    // Add media object for both simulate and real mode
-    if (isVideo) {
-      embeddedMedia = new VideoEmbedImpl(
-        mediaText,
-        mediaBuffer,
-        mimeType
-      );
-    } else {
-      try{
-        if(Array.isArray(embeddedMedia)) {
-          embeddedMedia.push(
-            new ImageEmbedImpl(mediaText, mediaBuffer, mimeType)
-          );
-        } else {
-          logger.error('Embedded media is not an array!!!');
-          logger.debug('Embedded media present instead of an array?', embeddedMedia);
-        }
-      } catch (error) {
-        logger.error('Failed to push image into embedded media', error);
-        logger.debug('Embedded media present instead of an array?', embeddedMedia);
-        throw error;
-      }
-    }
-
+    (embeddedMedia as ImageEmbed[]).push(
+      new ImageEmbedImpl(mediaText, mediaBuffer, mimeType)
+    );
     mediaCount++;
-  }
-
-  if (postText.length > POST_TEXT_LIMIT) {
-    postText =
-      postText.substring(
-        0,
-        POST_TEXT_LIMIT - POST_TEXT_TRUNCATE_SUFFIX.length
-      ) + POST_TEXT_TRUNCATE_SUFFIX;
   }
 
   return { 
