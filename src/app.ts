@@ -144,20 +144,25 @@ export async function main() {
         TEST_MODE,
         SIMULATE
       );
-      let { embeddedMedia } = await processPost(
-        post,
-        process.env.ARCHIVE_FOLDER!,
-        TEST_MODE,
-        SIMULATE
-      );
+      let embeddedMedia: any = [];
+
+      // Supports single video media or multiple images.
+      if (post.media[0].type === 'Video') {
+        const videoEmbed = await processVideoPost(post.media[0].media_url, post.media[0].video_buffer);
+        embeddedMedia = videoEmbed;
+      } else {
+        const postData = await processPost(
+          post,
+          process.env.ARCHIVE_FOLDER!,
+          TEST_MODE,
+          SIMULATE
+        );
+        embeddedMedia = postData.embeddedMedia;
+      }
 
       if (!postDate) {
         logger.warn("Skipping post - Invalid date");
         continue;
-      }
-
-      if (post.media[0].type === 'Video') {
-        embeddedMedia = await processVideoPost(post.media[0].media_url, post.media[0].video_buffer);
       }
 
       if (!SIMULATE && bluesky) {
