@@ -1,4 +1,4 @@
-import { main } from '../src/app';
+import { main, formatDuration, calculateEstimatedTime } from '../src/app';
 import { BlueskyClient } from '../src/bluesky';
 import { processPost } from '../src/media';
 import { logger } from '../src/logger';
@@ -263,5 +263,38 @@ describe('Main App', () => {
         $type: 'app.bsky.embed.video'
       })
     );
+  });
+});
+
+describe('Time Formatting Functions', () => {
+  describe('formatDuration', () => {
+    test('should format duration with hours and minutes', () => {
+      const cases = [
+        { input: 3600000, expected: '1 hours and 0 minutes' },     // 1 hour
+        { input: 5400000, expected: '1 hours and 30 minutes' },    // 1.5 hours
+        { input: 900000, expected: '0 hours and 15 minutes' },     // 15 minutes
+        { input: 7200000, expected: '2 hours and 0 minutes' },     // 2 hours
+        { input: 8100000, expected: '2 hours and 15 minutes' },    // 2.25 hours
+      ];
+
+      cases.forEach(({ input, expected }) => {
+        expect(formatDuration(input)).toBe(expected);
+      });
+    });
+  });
+
+  describe('calculateEstimatedTime', () => {
+    test('should calculate estimated time based on media count', () => {
+      // API_RATE_LIMIT_DELAY is 3000ms, with 1.1 multiplier
+      const cases = [
+        { mediaCount: 20, expected: '0 hours and 1 minutes' },     // 20 * 3000 * 1.1 = 66000ms
+        { mediaCount: 40, expected: '0 hours and 2 minutes' },    // 40 * 3000 * 1.1 = 132000ms
+        { mediaCount: 10, expected: '0 hours and 0 minutes' },    // 10 * 3000 * 1.1 = 33000ms
+      ];
+
+      cases.forEach(({ mediaCount, expected }) => {
+        expect(calculateEstimatedTime(mediaCount)).toBe(expected);
+      });
+    });
   });
 });

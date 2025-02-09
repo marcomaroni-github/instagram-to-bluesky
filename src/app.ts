@@ -5,7 +5,7 @@ import { logger } from "./logger";
 import { BlueskyClient } from "./bluesky";
 import { processPost } from "./media";
 import { prepareVideoUpload, createVideoEmbed } from "./video";
-import path from 'path';
+import path from "path";
 
 dotenv.config();
 
@@ -39,15 +39,18 @@ function decodeUTF8(data: any): any {
 
 /**
  * Returns the absolute path to the archive folder
- * @param TEST_VIDEO_MODE 
- * @param TEST_IMAGE_MODE 
- * @returns 
+ * @param TEST_VIDEO_MODE
+ * @param TEST_IMAGE_MODE
+ * @returns
  */
-export function getArchiveFolder(TEST_VIDEO_MODE: boolean, TEST_IMAGE_MODE: boolean) {
-  const rootDir = path.resolve(__dirname, '..');
-  
-  if (TEST_VIDEO_MODE) return path.join(rootDir, 'transfer/test_videos');
-  if (TEST_IMAGE_MODE) return path.join(rootDir, 'transfer/test_images');
+export function getArchiveFolder(
+  TEST_VIDEO_MODE: boolean,
+  TEST_IMAGE_MODE: boolean
+) {
+  const rootDir = path.resolve(__dirname, "..");
+
+  if (TEST_VIDEO_MODE) return path.join(rootDir, "transfer/test_videos");
+  if (TEST_IMAGE_MODE) return path.join(rootDir, "transfer/test_images");
   return path.join(rootDir, process.env.ARCHIVE_FOLDER!);
 }
 
@@ -95,10 +98,27 @@ async function processVideoPost(
  * Validates test mode configuration
  * @throws Error if both test modes are enabled
  */
-function validateTestConfig(TEST_VIDEO_MODE: boolean, TEST_IMAGE_MODE: boolean) {
+function validateTestConfig(
+  TEST_VIDEO_MODE: boolean,
+  TEST_IMAGE_MODE: boolean
+) {
   if (TEST_VIDEO_MODE && TEST_IMAGE_MODE) {
-    throw new Error('Cannot enable both TEST_VIDEO_MODE and TEST_IMAGE_MODE simultaneously');
+    throw new Error(
+      "Cannot enable both TEST_VIDEO_MODE and TEST_IMAGE_MODE simultaneously"
+    );
   }
+}
+
+export function formatDuration(milliseconds: number): string {
+  const minutes = Math.floor(milliseconds / (1000 * 60));
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours} hours and ${remainingMinutes} minutes`;
+}
+
+export function calculateEstimatedTime(importedMedia: number): string {
+  const estimatedMilliseconds = importedMedia * API_RATE_LIMIT_DELAY * 1.1;
+  return formatDuration(estimatedMilliseconds);
 }
 
 export async function main() {
@@ -117,7 +137,8 @@ export async function main() {
     : undefined;
   const archivalFolder = getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
 
-  logger.info(`Import started at ${new Date().toISOString()}`);
+  const importStart: Date = new Date();
+  logger.info(`Import started at ${importStart.toISOString()}`);
   logger.info({
     SourceFolder: archivalFolder,
     username: process.env.BLUESKY_USERNAME,
@@ -141,10 +162,15 @@ export async function main() {
 
   let postsJsonPath: string;
   if (TEST_VIDEO_MODE || TEST_IMAGE_MODE) {
-    postsJsonPath = path.join(archivalFolder, 'posts.json');
-    logger.info(`--- TEST mode is enabled, using content from ${archivalFolder} ---`);
+    postsJsonPath = path.join(archivalFolder, "posts.json");
+    logger.info(
+      `--- TEST mode is enabled, using content from ${archivalFolder} ---`
+    );
   } else {
-    postsJsonPath = path.join(archivalFolder, 'your_instagram_activity/content/posts_1.json');
+    postsJsonPath = path.join(
+      archivalFolder,
+      "your_instagram_activity/content/posts_1.json"
+    );
   }
 
   const fInstaPosts = FS.readFileSync(postsJsonPath);
@@ -288,16 +314,10 @@ export async function main() {
     logger.info(`Estimated time for real import: ${estimatedTime}`);
   }
 
+  const importEnd: Date = new Date();
   logger.info(
-    `Import finished at ${new Date().toISOString()}, imported ${importedPosts} posts with ${importedMedia} media`
+    `Import finished at ${importEnd.toISOString()}, imported ${importedPosts} posts with ${importedMedia} media`
   );
-}
-
-function calculateEstimatedTime(importedMedia: number): string {
-  const minutes = Math.round(
-    ((importedMedia * API_RATE_LIMIT_DELAY) / 1000 / 60) * 1.1
-  );
-  const hours = Math.floor(minutes / 60);
-  const min = minutes % 60;
-  return `${hours} hours and ${min} minutes`;
+  const totalTime = importEnd.getTime() - importStart.getTime();
+  logger.info(`Total import time: ${formatDuration(totalTime)}`);
 }
