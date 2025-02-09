@@ -122,7 +122,6 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
       });
     } else {
       embeddedMedia.push({
-        $type: 'app.bsky.embed.images#image',
         alt: mediaText,
         image: mediaBuffer,
         mimeType

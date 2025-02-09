@@ -79,45 +79,59 @@ export class BlueskyClient {
     }
   }
 
-  async createPost(postDate: Date, postText: string, embeddedMedia: any): Promise<string | null> {
-    const rt = new RichText({ text: postText });
-    await rt.detectFacets(this.agent);
-
-    // If there's a video in embeddedMedia, upload it first
-    if (embeddedMedia && !Array.isArray(embeddedMedia) && embeddedMedia.$type === 'app.bsky.embed.video') {
-      try {
-        // Upload the video if ref is empty (not yet uploaded)
-        if (!embeddedMedia.video.ref.$link) {
-          const videoBlob = await this.uploadVideo(
-            embeddedMedia.video.buffer,
-            embeddedMedia.video.mimeType
-          );
-          // Update the ref with the uploaded blob
-          embeddedMedia.video.ref = videoBlob;
-        }
-      } catch (error) {
-        logger.error('Failed to process video for post:', error);
-        return null;
-      }
-    }
-
-    const postRecord = {
-      $type: 'app.bsky.feed.post',
-      text: rt.text,
-      facets: rt.facets,
-      createdAt: postDate.toISOString(),
-      embed: embeddedMedia
-    };
-
+  /**
+   * Upload image file and get blob reference
+   */
+  async uploadImage(buffer: Buffer, mimeType: string = 'image/jpeg'): Promise<BlobRef> {
     try {
-      const recordData = await this.agent.post(postRecord);
-      const i = recordData.uri.lastIndexOf('/');
-      if (i > 0) {
-        const rkey = recordData.uri.substring(i + 1);
-        return `https://bsky.app/profile/${this.username}/post/${rkey}`;
+      logger.debug('Uploading image...');
+      const response = await this.agent.uploadBlob(buffer, { encoding: mimeType });
+      
+      if (!response?.blob) {
+        throw new Error('Failed to get image upload reference');
       }
-      logger.warn(recordData);
-      return null;
+
+      return response.blob;
+    } catch (error) {
+      logger.error('Failed to upload image:', error);
+      throw error;
+    }
+  }
+
+  async createPost(postDate: Date, postText: string, embeddedMedia: any): Promise<string | null> {
+    try {
+      // Handle image uploads if present
+      if (Array.isArray(embeddedMedia)) {
+        const uploadedImages = await Promise.all(
+          embeddedMedia.map(async (media) => {
+            const blob = await this.uploadImage(media.image, media.mimeType);
+            return {
+              $type: 'app.bsky.embed.images#image',
+              alt: media.alt,
+              image: blob
+            };
+          })
+        );
+        
+        embeddedMedia = {
+          $type: 'app.bsky.embed.images',
+          images: uploadedImages
+        };
+      }
+
+      // Rest of the existing createPost code...
+      const rt = new RichText({ text: postText });
+      await rt.detectFacets(this.agent);
+
+      const postRecord = {
+        $type: 'app.bsky.feed.post',
+        text: rt.text,
+        facets: rt.facets,
+        createdAt: postDate.toISOString(),
+        embed: embeddedMedia
+      };
+
+      // ... rest of the existing code ...
     } catch (error) {
       logger.error('Failed to create post:', error);
       return null;
