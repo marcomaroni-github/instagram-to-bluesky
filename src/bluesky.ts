@@ -57,6 +57,33 @@ export interface ImagesEmbed {
 type EmbeddedMedia = VideoEmbed | ImageEmbed[] | ImagesEmbed;
 type PostEmbed = VideoEmbedPost | ImagesEmbed;
 
+export class VideoEmbedImpl implements VideoEmbed {
+  readonly $type = "app.bsky.embed.video";
+
+  constructor(
+    public alt: string,
+    public buffer: Buffer,
+    public mimeType: string,
+    public size?: number,
+    public video?: {
+      ref: BlobRef;
+      mimeType: string;
+      size: number;
+    }
+  ) {}
+
+  toJSON() {
+    return {
+      $type: this.$type,
+      alt: this.alt,
+      buffer: "[Buffer length=" + this.buffer.length + "]",
+      mimeType: this.mimeType,
+      size: this.size,
+      video: this.video
+    };
+  }
+}
+
 export class BlueskyClient {
   private readonly agent: AtpAgent;
   private readonly username: string;

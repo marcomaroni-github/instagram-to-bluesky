@@ -1,4 +1,4 @@
-import { ImageEmbed, VideoEmbed, ImageEmbedImpl } from './bluesky';
+import { ImageEmbed, VideoEmbed, ImageEmbedImpl, VideoEmbedImpl } from './bluesky';
 import { logger } from './logger';
 import { validateVideo } from './video';
 import FS from 'fs';
@@ -115,12 +115,11 @@ export async function processPost(post: any, archiveFolder: string): Promise<Pro
 
     // Add media object for both simulate and real mode
     if (isVideo) {
-      embeddedMedia = {
-        $type: 'app.bsky.embed.video',
-        alt: mediaText,
-        buffer: mediaBuffer,
+      embeddedMedia = new VideoEmbedImpl(
+        mediaText,
+        mediaBuffer,
         mimeType
-      } as VideoEmbed;
+      );
     } else {
       try{
         if(Array.isArray(embeddedMedia)) {
