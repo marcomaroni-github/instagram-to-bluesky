@@ -157,13 +157,13 @@ export class BlueskyClient {
     return undefined;
   }
 
-  async createPost(postDate: Date, postText: string, embeddedMedia: EmbeddedMedia): Promise<string | null> {
+  async createPost(postDate: Date, postText: string, embeddedMedia: any): Promise<string | null> {
     try {
       // Handle image uploads if present
       if (Array.isArray(embeddedMedia)) {
         const uploadedImages = await Promise.all(
-          embeddedMedia.map(async (media: ImageEmbed) => {
-            const blob = await this.uploadImage(media.image as Buffer, media.mimeType);
+          embeddedMedia.map(async (media) => {
+            const blob = await this.uploadImage(media.image, media.mimeType);
             return {
               $type: 'app.bsky.embed.images#image',
               alt: media.alt,
@@ -175,7 +175,7 @@ export class BlueskyClient {
         embeddedMedia = {
           $type: 'app.bsky.embed.images',
           images: uploadedImages
-        } as ImagesEmbed;
+        };
       }
 
       const rt = new RichText({ text: postText });
@@ -186,7 +186,7 @@ export class BlueskyClient {
         text: rt.text,
         facets: rt.facets,
         createdAt: postDate.toISOString(),
-        embed: this.determineEmbed(embeddedMedia)
+        embed: embeddedMedia
       };
 
       const recordData = await this.agent.post(postRecord);
