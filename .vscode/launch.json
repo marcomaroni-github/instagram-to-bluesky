@@ -9,7 +9,12 @@
       "program": "${workspaceFolder}/src/main.ts",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "sourceMaps": true
+      "sourceMaps": true,
+      "nodeVersionHint": 22,
+      "env": {
+        "NODE_OPTIONS": "--experimental-fetch"
+      },
+      "runtimeArgs": ["--experimental-fetch"]
     },
     {
       "type": "node",
