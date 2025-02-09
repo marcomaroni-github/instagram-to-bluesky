@@ -6,7 +6,7 @@ export interface VideoEmbed {
   alt: string;
   buffer: Buffer;
   mimeType: string;
-  aspectRatio?: { width: number; height: number };
+  size?: number;
   video?: {
     ref: BlobRef;
     mimeType: string;
@@ -14,11 +14,17 @@ export interface VideoEmbed {
   };
 }
 
+export interface VideoEmbedPost {
+  $type: 'app.bsky.embed.video';
+  video: BlobRef;
+  mimeType: string;
+  size: number;
+}
+
 export interface ImageEmbed {
   $type: 'app.bsky.embed.images#image';
   alt: string;
   image: Buffer | BlobRef;
-  mimeType: string;
 }
 
 export interface ImagesEmbed {
@@ -27,6 +33,7 @@ export interface ImagesEmbed {
 }
 
 type EmbeddedMedia = VideoEmbed | ImageEmbed[] | ImagesEmbed;
+type PostEmbed = VideoEmbedPost | ImagesEmbed;
 
 export class BlueskyClient {
   private readonly agent: AtpAgent;
@@ -55,51 +62,16 @@ export class BlueskyClient {
   /**
    * Upload video file and get blob reference
    */
-  async uploadVideo(buffer: Buffer, mimeType: 'video/mp4' = 'video/mp4'): Promise<BlobRef> {
+  async uploadVideo(buffer: Buffer, mimeType: string = 'video/mp4'): Promise<BlobRef> {
     try {
       logger.debug('Starting video upload process...');
+      const response = await this.agent.uploadBlob(buffer, { encoding: mimeType });
       
-      // Step 1: Upload video and get job ID
-      const uploadResponse = await this.agent.api.app.bsky.video.uploadVideo(buffer, {
-        encoding: mimeType,
-        headers: {
-          'Content-Type': mimeType
-        }
-      });
-
-      if (!uploadResponse?.data?.jobStatus?.jobId) {
-        throw new Error('Failed to get job ID from video upload');
+      if (!response?.data?.blob) {
+        throw new Error('Failed to get video upload reference');
       }
 
-      const jobId = uploadResponse.data.jobStatus.jobId;
-      logger.debug(`Video upload started with job ID: ${jobId}`);
-
-      // Step 2: Poll job status until complete
-      const maxAttempts = 30; // 5 minutes max (10 second intervals)
-      let attempts = 0;
-      
-      while (attempts < maxAttempts) {
-        const statusResponse = await this.agent.api.app.bsky.video.getJobStatus({
-          jobId: jobId
-        });
-
-        const status = statusResponse.data.jobStatus;
-
-        if (status.state === 'JOB_STATE_COMPLETED' && status.blob) {
-          logger.debug(`Video upload completed with blob: ${status.blob}`);
-          return status.blob;
-        }
-
-        if (status.state === 'JOB_STATE_FAILED') {
-          throw new Error(`Video upload failed: ${status.error || 'Unknown error'}`);
-        }
-
-        // Wait 10 seconds before checking again
-        await new Promise(resolve => setTimeout(resolve, 10000));
-        attempts++;
-      }
-
-      throw new Error('Video upload timed out');
+      return response.data.blob;
     } catch (error) {
       logger.error('Failed to upload video:', error);
       throw error;
@@ -125,20 +97,16 @@ export class BlueskyClient {
     }
   }
 
-  private determineEmbed(embeddedMedia: EmbeddedMedia) {
+  private determineEmbed(embeddedMedia: EmbeddedMedia): PostEmbed | undefined {
     if (!embeddedMedia) return undefined;
 
     // Handle video embed
     if (!Array.isArray(embeddedMedia) && embeddedMedia.$type === 'app.bsky.embed.video') {
       return {
         $type: 'app.bsky.embed.video',
-        video: {
-          $type: 'blob',
-          ref: embeddedMedia.video!.ref,
-          mimeType: embeddedMedia.mimeType,
-          size: embeddedMedia.video!.size
-        },
-        aspectRatio: embeddedMedia.aspectRatio
+        video: embeddedMedia.video!.ref,
+        mimeType: embeddedMedia.mimeType,
+        size: embeddedMedia.video!.size
       };
     }
 
@@ -149,7 +117,7 @@ export class BlueskyClient {
         images: embeddedMedia.map(img => ({
           $type: 'app.bsky.embed.images#image',
           alt: img.alt,
-          image: img.image as BlobRef // At this point it should be a BlobRef
+          image: img.image as BlobRef
         }))
       };
     }
@@ -176,6 +144,16 @@ export class BlueskyClient {
           $type: 'app.bsky.embed.images',
           images: uploadedImages
         };
+      } else if (embeddedMedia?.$type === 'app.bsky.embed.video') {
+        // Upload video first
+        const blob = await this.uploadVideo(embeddedMedia.buffer, embeddedMedia.mimeType);
+        embeddedMedia.video = {
+          ref: blob,
+          mimeType: embeddedMedia.mimeType,
+          size: embeddedMedia.buffer.length
+        };
+        // Now transform the embed
+        embeddedMedia = this.determineEmbed(embeddedMedia);
       }
 
       const rt = new RichText({ text: postText });
