@@ -35,6 +35,7 @@ npm run test:coverage
 ## Prerequisites
 
 - Node.js >= 20.12.0
+    - .nvmrc exists, run `nvm use`.
 - Your Instagram archive in JSON format ([download your archive here](https://www.instagram.com/download/request))
 - A Bluesky account with an App Password
 
