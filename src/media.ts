@@ -80,7 +80,7 @@ export async function processMedia(media: any, archiveFolder: string): Promise<M
   return { mediaText: truncatedText, mimeType, mediaBuffer, isVideo };
 }
 
-export async function processPost(post: any, archiveFolder: string, simulate: boolean): Promise<ProcessedPost> {
+export async function processPost(post: any, archiveFolder: string): Promise<ProcessedPost> {
   let postDate = post.creation_timestamp
     ? new Date(post.creation_timestamp * 1000)
     : undefined;
@@ -112,11 +112,20 @@ export async function processPost(post: any, archiveFolder: string, simulate: bo
       continue;
     }
 
-    // Add placeholder media object for testing
-    if (simulate) {
+    // Add media object for both simulate and real mode
+    if (isVideo) {
       embeddedMedia.push({
-        $type: isVideo ? 'app.bsky.embed.video' : 'app.bsky.embed.images',
+        $type: 'app.bsky.embed.video',
         alt: mediaText,
+        buffer: mediaBuffer,
+        mimeType
+      });
+    } else {
+      embeddedMedia.push({
+        $type: 'app.bsky.embed.images#image',
+        alt: mediaText,
+        image: mediaBuffer,
+        mimeType
       });
     }
 

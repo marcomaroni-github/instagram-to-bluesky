@@ -5,6 +5,7 @@ import { logger } from "./logger";
 import { BlueskyClient } from "./bluesky";
 import { processPost } from "./media";
 import { prepareVideoUpload, createVideoEmbed } from "./video";
+import path from 'path';
 
 dotenv.config();
 
@@ -35,11 +36,20 @@ function decodeUTF8(data: any): any {
     return data;
   }
 }
+
+/**
+ * Returns the absolute path to the archive folder
+ * @param TEST_VIDEO_MODE 
+ * @param TEST_IMAGE_MODE 
+ * @returns 
+ */
 export function getArchiveFolder(TEST_VIDEO_MODE: boolean, TEST_IMAGE_MODE: boolean) {
-  if (TEST_VIDEO_MODE) return "./transfer/test_videos";
-  if (TEST_IMAGE_MODE) return "./transfer/test_images";
-  return process.env.ARCHIVE_FOLDER!;
-};
+  const rootDir = path.resolve(__dirname, '..');
+  
+  if (TEST_VIDEO_MODE) return path.join(rootDir, 'transfer/test_videos');
+  if (TEST_IMAGE_MODE) return path.join(rootDir, 'transfer/test_images');
+  return path.join(rootDir, process.env.ARCHIVE_FOLDER!);
+}
 
 async function processVideoPost(
   filePath: string,
@@ -91,10 +101,11 @@ export async function main() {
   let MAX_DATE: Date | undefined = process.env.MAX_DATE
     ? new Date(process.env.MAX_DATE)
     : undefined;
+  const archivalFolder = getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
 
   logger.info(`Import started at ${new Date().toISOString()}`);
   logger.info({
-    SourceFolder: getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE),
+    SourceFolder: archivalFolder,
     username: process.env.BLUESKY_USERNAME,
     MIN_DATE,
     MAX_DATE,
@@ -115,14 +126,11 @@ export async function main() {
   }
 
   let postsJsonPath: string;
-  if (TEST_VIDEO_MODE) {
-    postsJsonPath = "./transfer/test_videos/posts.json";
-    logger.info("--- TEST VIDEO mode is enabled, using test video content ---");
-  } else if (TEST_IMAGE_MODE) {
-    postsJsonPath = "./transfer/test_images/posts.json";
-    logger.info("--- TEST IMAGE mode is enabled, using test image content ---");
+  if (TEST_VIDEO_MODE || TEST_IMAGE_MODE) {
+    postsJsonPath = path.join(archivalFolder, 'posts.json');
+    logger.info(`--- TEST mode is enabled, using content from ${archivalFolder} ---`);
   } else {
-    postsJsonPath = `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`;
+    postsJsonPath = path.join(archivalFolder, 'your_instagram_activity/content/posts_1.json');
   }
 
   const fInstaPosts = FS.readFileSync(postsJsonPath);
@@ -177,7 +185,7 @@ export async function main() {
         postText,
         mediaCount,
         embeddedMedia: initialMedia,
-      } = await processPost(post, getArchiveFolder(), SIMULATE);
+      } = await processPost(post, archivalFolder);
       let embeddedMedia: any = initialMedia;
 
       logger.debug({

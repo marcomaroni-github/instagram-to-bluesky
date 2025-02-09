@@ -3,7 +3,7 @@ import { BlueskyClient } from '../src/bluesky';
 import { processPost } from '../src/media';
 import { logger } from '../src/logger';
 import fs from 'fs';
-import { prepareVideoUpload, createVideoEmbed } from '../src/video';
+import { createVideoEmbed } from '../src/video';
 
 // Mock all dependencies
 jest.mock('fs');
