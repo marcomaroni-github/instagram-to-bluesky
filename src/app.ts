@@ -1,9 +1,9 @@
-import * as dotenv from 'dotenv';
-import FS from 'fs';
-import * as process from 'process';
-import { logger } from './logger';
-import { BlueskyClient } from './bluesky';
-import { processPost } from './media';
+import * as dotenv from "dotenv";
+import FS from "fs";
+import * as process from "process";
+import { logger } from "./logger";
+import { BlueskyClient } from "./bluesky";
+import { processPost } from "./media";
 
 dotenv.config();
 
@@ -11,16 +11,16 @@ const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides
 
 function decodeUTF8(data: any): any {
   try {
-    if (typeof data === 'string') {
+    if (typeof data === "string") {
       const utf8 = new TextEncoder().encode(data);
-      return new TextDecoder('utf-8').decode(utf8);
+      return new TextDecoder("utf-8").decode(utf8);
     }
 
     if (Array.isArray(data)) {
       return data.map(decodeUTF8);
     }
 
-    if (typeof data === 'object' && data !== null) {
+    if (typeof data === "object" && data !== null) {
       const obj: { [key: string]: any } = {};
       Object.entries(data).forEach(([key, value]) => {
         obj[key] = decodeUTF8(value);
@@ -30,18 +30,18 @@ function decodeUTF8(data: any): any {
 
     return data;
   } catch (error) {
-    logger.error({ message: 'Error decoding UTF-8 data', error });
+    logger.error({ message: "Error decoding UTF-8 data", error });
     return data;
   }
 }
 
 export async function main() {
   // Set environment variables within function scope, allows mocked unit testing.
-  const SIMULATE = process.env.SIMULATE === '1';
-  const TEST_MODE = process.env.TEST_MODE === '1';
+  const SIMULATE = process.env.SIMULATE === "1";
+  const TEST_MODE = process.env.TEST_MODE === "1";
   let MIN_DATE: Date | undefined = process.env.MIN_DATE
-  ? new Date(process.env.MIN_DATE)
-  : undefined;
+    ? new Date(process.env.MIN_DATE)
+    : undefined;
   let MAX_DATE: Date | undefined = process.env.MAX_DATE
     ? new Date(process.env.MAX_DATE)
     : undefined;
@@ -56,30 +56,32 @@ export async function main() {
   });
 
   let bluesky: BlueskyClient | null = null;
-  
+
   if (!SIMULATE) {
-    logger.info('--- SIMULATE mode is disabled, posts will be imported ---');
+    logger.info("--- SIMULATE mode is disabled, posts will be imported ---");
     bluesky = new BlueskyClient(
       process.env.BLUESKY_USERNAME!,
       process.env.BLUESKY_PASSWORD!
     );
     await bluesky.login();
   } else {
-    logger.warn('--- SIMULATE mode is enabled, no posts will be imported ---');
+    logger.warn("--- SIMULATE mode is enabled, no posts will be imported ---");
   }
 
   const fInstaPosts = FS.readFileSync(
-    TEST_MODE 
-      ? './transfer/test_videos/posts.json'
+    TEST_MODE
+      ? "./transfer/test_videos/posts.json"
       : `${process.env.ARCHIVE_FOLDER}/your_instagram_activity/content/posts_1.json`
   );
-  
-  const instaPosts = TEST_MODE
-    ? decodeUTF8(JSON.parse(fInstaPosts.toString())).test_video_posts
-    : decodeUTF8(JSON.parse(fInstaPosts.toString()));
+
+  const instaPosts = decodeUTF8(JSON.parse(fInstaPosts.toString()));
 
   let importedPosts = 0;
   let importedMedia = 0;
+
+  if (TEST_MODE) {
+    logger.info("--- TEST mode is enabled, skipping video processing ---");
+  }
 
   if (instaPosts && instaPosts.length > 0) {
     const sortedPosts = instaPosts.sort((a, b) => {
@@ -99,7 +101,7 @@ export async function main() {
       }
 
       if (!checkDate) {
-        logger.warn('Skipping post - No date');
+        logger.warn("Skipping post - No date");
         continue;
       }
 
@@ -111,29 +113,46 @@ export async function main() {
       }
 
       if (MAX_DATE && checkDate > MAX_DATE) {
-        logger.warn(`Skipping post - After MAX_DATE [${checkDate.toUTCString()}]`);
+        logger.warn(
+          `Skipping post - After MAX_DATE [${checkDate.toUTCString()}]`
+        );
         break;
       }
 
-      const { postDate, postText, embeddedMedia, mediaCount } = 
-        await processPost(post, process.env.ARCHIVE_FOLDER!, TEST_MODE, SIMULATE);
+      const { postDate, postText, embeddedMedia, mediaCount } =
+        await processPost(
+          post,
+          process.env.ARCHIVE_FOLDER!,
+          TEST_MODE,
+          SIMULATE
+        );
 
       if (!postDate) {
-        logger.warn('Skipping post - Invalid date');
+        logger.warn("Skipping post - Invalid date");
         continue;
       }
 
       if (!SIMULATE && bluesky) {
-        await new Promise((resolve) => setTimeout(resolve, API_RATE_LIMIT_DELAY));
+        await new Promise((resolve) =>
+          setTimeout(resolve, API_RATE_LIMIT_DELAY)
+        );
         try {
-          const postUrl = await bluesky.createPost(postDate, postText, embeddedMedia);
-          
+          const postUrl = await bluesky.createPost(
+            postDate,
+            postText,
+            embeddedMedia
+          );
+
           if (postUrl) {
             logger.info(`Bluesky post created with url: ${postUrl}`);
             importedPosts++;
           }
         } catch (error) {
-          logger.error(`Failed to create Bluesky post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          logger.error(
+            `Failed to create Bluesky post: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`
+          );
           // Continue with the next post even if this one failed
         }
       } else {
@@ -142,11 +161,12 @@ export async function main() {
 
       logger.debug({
         IG_Post: {
-          message: 'Instagram Post',
+          message: "Instagram Post",
           Created: postDate.toISOString(),
           embeddedMedia,
-          Text: postText.length > 50 ? postText.substring(0, 50) + '...' : postText,
-        }
+          Text:
+            postText.length > 50 ? postText.substring(0, 50) + "..." : postText,
+        },
       });
 
       importedMedia += mediaCount;
