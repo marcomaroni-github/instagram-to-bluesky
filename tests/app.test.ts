@@ -3,6 +3,7 @@ import { BlueskyClient } from '../src/bluesky';
 import { processPost } from '../src/media';
 import { logger } from '../src/logger';
 import fs from 'fs';
+import { prepareVideoUpload, createVideoEmbed } from '../src/video';
 
 // Mock all dependencies
 jest.mock('fs');
@@ -18,6 +19,12 @@ jest.mock('../src/logger', () => ({
 }));
 jest.mock('dotenv', () => ({
   config: jest.fn(),
+}));
+jest.mock('../src/video', () => ({
+  prepareVideoUpload: jest.fn(),
+  createVideoEmbed: jest.fn(),
+  validateVideo: jest.fn(),
+  getVideoDimensions: jest.fn()
 }));
 
 describe('Main App', () => {
@@ -203,6 +210,52 @@ describe('Main App', () => {
 
     expect(logger.info).toHaveBeenCalledWith(
       expect.stringContaining('Estimated time for real import')
+    );
+  });
+
+  test('should handle video posts correctly', async () => {
+    const mockVideoPost = {
+      creation_timestamp: Date.now() / 1000,
+      title: 'Test Video Post',
+      media: [{
+        type: 'Video',
+        creation_timestamp: Date.now() / 1000,
+        media_url: 'test.mp4',
+        video_buffer: Buffer.from('test')
+      }]
+    };
+
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockVideoPost]));
+    
+    // Mock video processing functions
+    (prepareVideoUpload as jest.Mock).mockResolvedValue({
+      ref: 'test-ref',
+      mimeType: 'video/mp4',
+      size: 1000,
+      dimensions: { width: 640, height: 480 }
+    });
+
+    (createVideoEmbed as jest.Mock).mockReturnValue({
+      $type: 'app.bsky.embed.video',
+      video: {
+        $type: 'blob',
+        ref: { $link: 'test-ref' },
+        mimeType: 'video/mp4',
+        size: 1000
+      },
+      aspectRatio: { width: 640, height: 480 }
+    });
+
+    await main();
+
+    expect(prepareVideoUpload).toHaveBeenCalled();
+    expect(createVideoEmbed).toHaveBeenCalled();
+    expect(BlueskyClient.prototype.createPost).toHaveBeenCalledWith(
+      expect.any(Date),
+      expect.any(String),
+      expect.objectContaining({
+        $type: 'app.bsky.embed.video'
+      })
     );
   });
 });
