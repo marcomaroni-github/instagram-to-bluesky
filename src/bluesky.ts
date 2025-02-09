@@ -22,24 +22,51 @@ export class BlueskyClient {
   /**
    * Upload video file and get blob reference
    */
-  async uploadVideo(buffer: Buffer, mimeType: string = 'video/mp4'): Promise<BlobRef> {
+  async uploadVideo(buffer: Buffer, mimeType: 'video/mp4' = 'video/mp4'): Promise<BlobRef> {
     try {
-      logger.debug('Uploading video file...');
+      logger.debug('Starting video upload process...');
       
-      // Upload blob with proper encoding and headers
-      const response = await this.agent.api.com.atproto.repo.uploadBlob(buffer, {
+      // Step 1: Upload video and get job ID
+      const uploadResponse = await this.agent.api.app.bsky.video.uploadVideo(buffer, {
         encoding: mimeType,
         headers: {
           'Content-Type': mimeType
         }
       });
 
-      if (!response?.data?.blob) {
-        throw new Error('Failed to get blob reference from upload');
+      if (!uploadResponse?.data?.jobStatus?.jobId) {
+        throw new Error('Failed to get job ID from video upload');
       }
 
-      logger.debug(`Video uploaded with blob: ${response.data.blob.ref.$link}`);
-      return response.data.blob;
+      const jobId = uploadResponse.data.jobStatus.jobId;
+      logger.debug(`Video upload started with job ID: ${jobId}`);
+
+      // Step 2: Poll job status until complete
+      const maxAttempts = 30; // 5 minutes max (10 second intervals)
+      let attempts = 0;
+      
+      while (attempts < maxAttempts) {
+        const statusResponse = await this.agent.api.app.bsky.video.getJobStatus({
+          jobId: jobId
+        });
+
+        const status = statusResponse.data.jobStatus;
+
+        if (status.state === 'JOB_STATE_COMPLETED' && status.blob) {
+          logger.debug(`Video upload completed with blob: ${status.blob}`);
+          return status.blob;
+        }
+
+        if (status.state === 'JOB_STATE_FAILED') {
+          throw new Error(`Video upload failed: ${status.error || 'Unknown error'}`);
+        }
+
+        // Wait 10 seconds before checking again
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        attempts++;
+      }
+
+      throw new Error('Video upload timed out');
     } catch (error) {
       logger.error('Failed to upload video:', error);
       throw error;
@@ -59,8 +86,8 @@ export class BlueskyClient {
             embeddedMedia.video.buffer,
             embeddedMedia.video.mimeType
           );
-          // Update the ref with the uploaded blob link
-          embeddedMedia.video.ref.$link = videoBlob.ref.$link;
+          // Update the ref with the uploaded blob
+          embeddedMedia.video.ref = videoBlob;
         }
       } catch (error) {
         logger.error('Failed to process video for post:', error);
@@ -73,7 +100,7 @@ export class BlueskyClient {
       text: rt.text,
       facets: rt.facets,
       createdAt: postDate.toISOString(),
-      embed: this.determineEmbed(embeddedMedia)
+      embed: embeddedMedia
     };
 
     try {
