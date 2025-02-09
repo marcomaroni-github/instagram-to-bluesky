@@ -2,9 +2,9 @@ import { AtpAgent, RichText, BlobRef } from '@atproto/api';
 import { logger } from './logger';
 
 export class BlueskyClient {
-  private agent: AtpAgent;
-  private username: string;
-  private password: string;
+  private readonly agent: AtpAgent;
+  private readonly username: string;
+  private readonly password: string;
 
   constructor(username: string, password: string) {
     this.agent = new AtpAgent({ service: 'https://bsky.social' });
@@ -13,10 +13,16 @@ export class BlueskyClient {
   }
 
   async login(): Promise<void> {
-    await this.agent.login({
-      identifier: this.username,
-      password: this.password,
-    });
+    logger.debug('Authenitcating with Bluesky atproto.');
+    try {
+      await this.agent.login({
+        identifier: this.username,
+        password: this.password,
+      });
+    } catch(error) {
+      logger.error('Authentication error');
+      throw error;
+    }
   }
 
   /**
