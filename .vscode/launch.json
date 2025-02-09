@@ -15,18 +15,6 @@
         "NODE_OPTIONS": "--experimental-fetch"
       },
       "runtimeArgs": ["--experimental-fetch"]
-    },
-    {
-      "type": "node",
-      "request": "attach",
-      "name": "Attach to Process",
-      "port": 9229,
-      "sourceMaps": true,
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "resolveSourceMapLocations": [
-        "${workspaceFolder}/**",
-        "!**/node_modules/**"
-      ]
     }
   ]
 } 
