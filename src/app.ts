@@ -4,6 +4,7 @@ import * as process from "process";
 import { logger } from "./logger";
 import { BlueskyClient } from "./bluesky";
 import { processPost } from "./media";
+import { prepareVideoUpload, createVideoEmbed } from './video';
 
 dotenv.config();
 
@@ -32,6 +33,24 @@ function decodeUTF8(data: any): any {
   } catch (error) {
     logger.error({ message: "Error decoding UTF-8 data", error });
     return data;
+  }
+}
+
+async function processVideoPost(filePath: string, buffer: Buffer) {
+  try {
+    // Prepare video metadata
+    const videoData = await prepareVideoUpload(filePath, buffer);
+    
+    // Upload video to get CID (this would be handled by your BlueskyClient)
+    // videoData.ref = await bluesky.uploadVideo(buffer);
+    
+    // Create video embed structure
+    const videoEmbed = createVideoEmbed(videoData);
+    
+    return videoEmbed;
+  } catch (error) {
+    logger.error('Failed to process video:', error);
+    throw error;
   }
 }
 
@@ -130,6 +149,11 @@ export async function main() {
       if (!postDate) {
         logger.warn("Skipping post - Invalid date");
         continue;
+      }
+
+      if (post.media[0].type === 'Video') {
+        const videoEmbed = await processVideoPost(post.media[0].media_url, post.media[0].video_buffer);
+        embeddedMedia = videoEmbed;
       }
 
       if (!SIMULATE && bluesky) {

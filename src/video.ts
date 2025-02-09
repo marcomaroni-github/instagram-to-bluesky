@@ -48,4 +48,57 @@ export async function getVideoDimensions(filePath: string): Promise<{width: numb
       resolve(dimensions);
     });
   });
+}
+
+/**
+ * Prepares video for Bluesky upload by creating required metadata
+ * @returns Promise<{ref: string, mimeType: string, size: number, dimensions: {width: number, height: number}}>
+ */
+export async function prepareVideoUpload(filePath: string, buffer: Buffer): Promise<{
+  ref: string,
+  mimeType: string,
+  size: number,
+  dimensions: {width: number, height: number}
+}> {
+  // Validate video size
+  if (!validateVideo(buffer)) {
+    throw new Error('Video validation failed');
+  }
+
+  // Get video dimensions
+  const dimensions = await getVideoDimensions(filePath);
+
+  // Return video metadata in Bluesky format
+  return {
+    ref: '', // This will be filled by the upload process with the CID
+    mimeType: 'video/mp4',
+    size: buffer.length,
+    dimensions
+  };
+}
+
+/**
+ * Creates the video embed structure for Bluesky post
+ */
+export function createVideoEmbed(videoData: {
+  ref: string,
+  mimeType: string,
+  size: number,
+  dimensions: {width: number, height: number}
+}) {
+  return {
+    $type: "app.bsky.embed.video",
+    video: {
+      $type: "blob",
+      ref: {
+        $link: videoData.ref
+      },
+      mimeType: videoData.mimeType,
+      size: videoData.size
+    },
+    aspectRatio: {
+      width: videoData.dimensions.width,
+      height: videoData.dimensions.height
+    }
+  };
 } 
