@@ -69,7 +69,7 @@ export async function processMedia(media: any, archiveFolder: string): Promise<M
 
   const isVideo = mimeType.startsWith('video/');
 
-  logger.info({
+  logger.debug({
     message: 'Instagram Source Media',
     mimeType,
     mediaFilename,
