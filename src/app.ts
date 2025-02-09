@@ -35,6 +35,11 @@ function decodeUTF8(data: any): any {
     return data;
   }
 }
+export function getArchiveFolder(TEST_VIDEO_MODE: boolean, TEST_IMAGE_MODE: boolean) {
+  if (TEST_VIDEO_MODE) return "./transfer/test_videos";
+  if (TEST_IMAGE_MODE) return "./transfer/test_images";
+  return process.env.ARCHIVE_FOLDER!;
+};
 
 async function processVideoPost(
   filePath: string,
@@ -89,7 +94,7 @@ export async function main() {
 
   logger.info(`Import started at ${new Date().toISOString()}`);
   logger.info({
-    SourceFolder: process.env.ARCHIVE_FOLDER,
+    SourceFolder: getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE),
     username: process.env.BLUESKY_USERNAME,
     MIN_DATE,
     MAX_DATE,
@@ -166,12 +171,6 @@ export async function main() {
         );
         break;
       }
-
-      const getArchiveFolder = () => {
-        if (TEST_VIDEO_MODE) return "./transfer/test_videos";
-        if (TEST_IMAGE_MODE) return "./transfer/test_images";
-        return process.env.ARCHIVE_FOLDER!;
-      };
 
       const {
         postDate,
