@@ -1,6 +1,5 @@
-import sharp from 'sharp';
 import { logger } from './logger';
-import { validateVideo, getVideoDimensions } from './video';
+import { validateVideo } from './video';
 import FS from 'fs';
 
 export interface MediaProcessResult {
