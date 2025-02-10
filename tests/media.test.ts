@@ -1,6 +1,8 @@
 import { getMimeType, processMedia, processPost } from "../src/media";
 import path from "path";
 import fs from "fs";
+import { BlueskyClient } from '../src/bluesky';
+import { createVideoEmbed, processVideoPost } from '../src/video';
 
 // Mock the file system
 jest.mock("fs", () => ({
@@ -21,7 +23,20 @@ jest.mock("../src/logger", () => ({
 jest.mock("../src/video", () => ({
   validateVideo: jest.fn().mockReturnValue(true),
   getVideoDimensions: jest.fn().mockResolvedValue({ width: 640, height: 480 }),
+  createVideoEmbed: jest.fn(),
+  processVideoPost: jest.fn()
 }));
+
+jest.mock('../src/bluesky', () => {
+  const actual = jest.requireActual('../src/bluesky');
+  return {
+    ...actual, // Keep the real ImageEmbedImpl and VideoEmbedImpl
+    BlueskyClient: jest.fn().mockImplementation(() => ({
+      uploadVideo: jest.fn().mockResolvedValue({ ref: { $link: 'test-ref' } }),
+      createPost: jest.fn()
+    }))
+  };
+});
 
 describe("Media Processing", () => {
   beforeEach(() => {
@@ -101,10 +116,15 @@ describe("Media Processing", () => {
       ],
     };
 
+    const mockBluesky = new BlueskyClient('user', 'pass');
+    const simulate = false;
+
     test("should process post correctly", async () => {
       const result = await processPost(
         testPost,
-        path.join(__dirname, "../transfer/test_videos")
+        path.join(__dirname, "../transfer/test_videos"),
+        mockBluesky,
+        simulate
       );
 
       expect(result.postDate).toBeTruthy();
@@ -123,7 +143,9 @@ describe("Media Processing", () => {
 
       const result = await processPost(
         emptyPost,
-        path.join(__dirname, "../transfer/test_videos")
+        path.join(__dirname, "../transfer/test_videos"),
+        mockBluesky,
+        simulate
       );
 
       expect(result.postDate).toBeTruthy();
@@ -141,7 +163,9 @@ describe("Media Processing", () => {
 
       const result = await processPost(
         longPost,
-        path.join(__dirname, "../transfer/test_videos")
+        path.join(__dirname, "../transfer/test_videos"),
+        mockBluesky,
+        simulate
       );
 
       expect(result.postText.length).toBeLessThanOrEqual(300);
@@ -163,7 +187,9 @@ describe("Media Processing", () => {
 
       const result = await processPost(
         jpgPost,
-        path.join(__dirname, "../transfer/test_videos")
+        path.join(__dirname, "../transfer/test_videos"),
+        mockBluesky,
+        simulate
       );
 
       expect(result.postDate).toBeTruthy();
@@ -171,6 +197,46 @@ describe("Media Processing", () => {
       // Image media should be an array
       expect(Array.isArray(result.embeddedMedia)).toBe(true);
       expect(result.embeddedMedia).toHaveLength(1);
+      expect(result.mediaCount).toBe(1);
+    });
+
+    test('should handle video posts correctly', async () => {
+      const mockVideoPost = {
+        title: "",
+        media: [{
+          uri: "test.mp4",
+          creation_timestamp: 1458732736,
+          media_metadata: {
+            video_metadata: {
+              exif_data: [{ latitude: 53.141186112, longitude: 11.038734576 }]
+            }
+          },
+          title: "No filter needed. #waterfall #nature"
+        }]
+      };
+
+      const mockVideoEmbed = {
+        $type: 'app.bsky.embed.video',
+        video: {
+          $type: 'blob',
+          ref: { $link: 'test-ref' },
+          mimeType: 'video/mp4',
+          size: 1000
+        },
+        aspectRatio: { width: 640, height: 480 }
+      };
+
+      (processVideoPost as jest.Mock).mockResolvedValue(mockVideoEmbed);
+
+      const result = await processPost(
+        mockVideoPost,
+        path.join(__dirname, "../transfer/test_videos"),
+        mockBluesky,
+        simulate
+      );
+
+      expect(processVideoPost).toHaveBeenCalled();
+      expect(result.embeddedMedia).toEqual(mockVideoEmbed);
       expect(result.mediaCount).toBe(1);
     });
   });

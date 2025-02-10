@@ -3,7 +3,7 @@ import { BlueskyClient } from '../src/bluesky';
 import { processPost } from '../src/media';
 import { logger } from '../src/logger';
 import fs from 'fs';
-import { createVideoEmbed } from '../src/video';
+import { createVideoEmbed, processVideoPost } from '../src/video';
 
 // Mock all dependencies
 jest.mock('fs');
@@ -32,7 +32,8 @@ jest.mock('../src/video', () => ({
   }),
   createVideoEmbed: jest.fn(),
   validateVideo: jest.fn(),
-  getVideoDimensions: jest.fn()
+  getVideoDimensions: jest.fn(),
+  processVideoPost: jest.fn()
 }));
 
 // Add this mock before the tests
@@ -115,7 +116,9 @@ describe('Main App', () => {
     expect(jest.mocked(BlueskyClient)).toHaveBeenCalled();
     expect(processPost).toHaveBeenCalledWith(
       expect.objectContaining(mockPost),
-      expect.stringContaining('/test/folder')
+      expect.stringContaining('/test/folder'),
+      expect.any(BlueskyClient),
+      false
     );
   });
 
@@ -228,61 +231,25 @@ describe('Main App', () => {
     );
   });
 
-  test('should handle video posts correctly', async () => {
-    const mockVideoPost = {
-      "title": "",
-      "media": [
-        {
-          "uri": "AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4",
-          "creation_timestamp": 1458732736,
-          "media_metadata": {
-            "video_metadata": {
-              "exif_data": [
-                {
-                  "latitude": 53.141186112,
-                  "longitude": 11.038734576
-                }
-              ]
-            }
-          },
-          "title": "No filter needed. #waterfall #nature",
-          "cross_post_source": {
-            "source_app": "FB"
-          }
-        }
-      ]
+  test('should process posts successfully', async () => {
+    const mockPost = {
+      creation_timestamp: Date.now() / 1000,
+      title: 'Test Post',
+      media: [{
+        creation_timestamp: Date.now() / 1000,
+        title: 'Test Media'
+      }]
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockVideoPost]));
-    
-    // Mock BlueskyClient uploadVideo method
-    jest.mocked(BlueskyClient).prototype.uploadVideo = jest.fn().mockResolvedValue({
-      ref: { $link: 'test-ref' }
-    });
-
-    // Mock the video embed result
-    const mockVideoEmbed = {
-      $type: 'app.bsky.embed.video',
-      video: {
-        $type: 'blob',
-        ref: { $link: 'test-ref' },
-        mimeType: 'video/mp4',
-        size: 1000
-      },
-      aspectRatio: { width: 640, height: 480 }
-    };
-
-    (createVideoEmbed as jest.Mock).mockReturnValue(mockVideoEmbed);
-
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
     await main();
 
-    expect(BlueskyClient.prototype.uploadVideo).toHaveBeenCalled();
-    expect(BlueskyClient.prototype.createPost).toHaveBeenCalledWith(
-      expect.any(Date),
-      expect.any(String),
-      expect.objectContaining({
-        $type: 'app.bsky.embed.video'
-      })
+    expect(jest.mocked(BlueskyClient)).toHaveBeenCalled();
+    expect(processPost).toHaveBeenCalledWith(
+      expect.objectContaining(mockPost),
+      expect.stringContaining('/test/folder'),
+      expect.any(BlueskyClient),
+      false
     );
   });
 });

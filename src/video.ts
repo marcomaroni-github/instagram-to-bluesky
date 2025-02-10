@@ -1,6 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffprobe from '@ffprobe-installer/ffprobe';
 import { logger } from './logger'
+import { BlueskyClient } from './bluesky';
 
 // Configure ffmpeg to use ffprobe
 ffmpeg.setFfprobePath(ffprobe.path);
@@ -102,3 +103,43 @@ export function createVideoEmbed(videoData: {
     }
   };
 } 
+
+
+export async function processVideoPost(
+  filePath: string,
+  buffer: Buffer,
+  bluesky: BlueskyClient | null,
+  simulate: boolean
+) {
+  try {
+    if (!buffer) {
+      throw new Error("Video buffer is undefined");
+    }
+
+    logger.debug({
+      message: "Processing video",
+      fileSize: buffer.length,
+      filePath,
+    });
+
+    // Prepare video metadata
+    const videoData = await prepareVideoUpload(filePath, buffer);
+
+    // Upload video to get CID
+    if (!simulate && bluesky) {
+      const blob = await bluesky.uploadVideo(buffer);
+      if (!blob?.ref?.$link) {
+        throw new Error("Failed to get video upload reference");
+      }
+      videoData.ref = blob.ref.$link;
+    }
+
+    // Create video embed structure
+    const videoEmbed = createVideoEmbed(videoData);
+
+    return videoEmbed;
+  } catch (error) {
+    logger.error("Failed to process video:", error);
+    throw error;
+  }
+}
