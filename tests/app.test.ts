@@ -230,14 +230,27 @@ describe('Main App', () => {
 
   test('should handle video posts correctly', async () => {
     const mockVideoPost = {
-      creation_timestamp: Date.now() / 1000,
-      title: 'Test Video Post',
-      media: [{
-        type: 'Video',
-        creation_timestamp: Date.now() / 1000,
-        media_url: 'test.mp4',
-        buffer: Buffer.from('test')
-      }]
+      "title": "",
+      "media": [
+        {
+          "uri": "AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4",
+          "creation_timestamp": 1458732736,
+          "media_metadata": {
+            "video_metadata": {
+              "exif_data": [
+                {
+                  "latitude": 53.141186112,
+                  "longitude": 11.038734576
+                }
+              ]
+            }
+          },
+          "title": "No filter needed. #waterfall #nature",
+          "cross_post_source": {
+            "source_app": "FB"
+          }
+        }
+      ]
     };
 
     (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockVideoPost]));

@@ -84,7 +84,6 @@ async function processVideoPost(
       videoData.ref = blob.ref.$link;
     }
 
-    // TODO determine if this logic is obsolete now.
     // Create video embed structure
     const videoEmbed = createVideoEmbed(videoData);
 
