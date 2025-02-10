@@ -21,7 +21,15 @@ jest.mock('dotenv', () => ({
   config: jest.fn(),
 }));
 jest.mock('../src/video', () => ({
-  prepareVideoUpload: jest.fn(),
+  prepareVideoUpload: jest.fn().mockReturnValue({
+    ref: '', // This will be filled by the upload process with the CID
+    mimeType: 'video/mp4',
+    size: 1000,
+    dimensions: {
+      width: 640,
+      height: 640
+    }
+  }),
   createVideoEmbed: jest.fn(),
   validateVideo: jest.fn(),
   getVideoDimensions: jest.fn()
@@ -220,7 +228,7 @@ describe('Main App', () => {
     );
   });
 
-  xtest('should handle video posts correctly', async () => {
+  test('should handle video posts correctly', async () => {
     const mockVideoPost = {
       creation_timestamp: Date.now() / 1000,
       title: 'Test Video Post',
@@ -228,7 +236,7 @@ describe('Main App', () => {
         type: 'Video',
         creation_timestamp: Date.now() / 1000,
         media_url: 'test.mp4',
-        video_buffer: Buffer.from('test')
+        buffer: Buffer.from('test')
       }]
     };
 
