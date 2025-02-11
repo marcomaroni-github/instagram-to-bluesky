@@ -1,8 +1,8 @@
-import { getMimeType, processMedia, processPost } from "../src/media";
+import { getMimeType, processMedia, processPost } from "./media";
 import path from "path";
 import fs from "fs";
-import { BlueskyClient } from '../src/bluesky';
-import { createVideoEmbed, processVideoPost } from '../src/video';
+import { BlueskyClient } from '../bluesky/bluesky';
+import { createVideoEmbed, processVideoPost } from '../video/video';
 
 // Mock the file system
 jest.mock("fs", () => ({
