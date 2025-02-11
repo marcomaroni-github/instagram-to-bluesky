@@ -1,9 +1,9 @@
-import { main, formatDuration, calculateEstimatedTime } from '../src/app';
-import { BlueskyClient } from '../src/bluesky';
-import { processPost } from '../src/media';
-import { logger } from '../src/logger';
 import fs from 'fs';
-import { createVideoEmbed, processVideoPost } from '../src/video';
+
+import { BlueskyClient } from '../src/bluesky';
+import { main, formatDuration, calculateEstimatedTime } from '../src/instagram-to-bluesky';
+import { logger } from '../src/logger';
+import { processPost } from '../src/media';
 
 // Mock all dependencies
 jest.mock('fs');
