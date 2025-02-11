@@ -2,112 +2,20 @@ import {
   AtpAgent,
   RichText,
   BlobRef,
-  AppBskyFeedPost,
-  AppBskyEmbedDefs,
-  AppBskyRichtextFacet,
   AppBskyEmbedVideo,
   AppBskyEmbedImages,
 } from "@atproto/api";
+
 import { logger } from "../logger/logger";
 
-export interface VideoEmbed extends AppBskyEmbedVideo.Main {
-  $type: "app.bsky.embed.video";
-  buffer: Buffer;
-  mimeType: string;
-  video: BlobRef;
-  size?: number;
-  captions?: AppBskyEmbedVideo.Caption[];
-  /** Alt text description of the video, for accessibility. */
-  alt?: string;
-  aspectRatio?: AppBskyEmbedDefs.AspectRatio;
-}
+import {
+  ImageEmbed,
+  EmbeddedMedia,
+  ImageEmbedImpl,
+  VideoEmbedImpl,
+  ImagesEmbedImpl
+} from "./types";
 
-export interface ImageEmbed extends AppBskyEmbedImages.Image {
-  $type: "app.bsky.embed.images#image";
-  alt: string;
-  image: BlobRef;
-  mimeType: string;
-  // Remove Buffer and Blob - we'll convert during upload
-  uploadData?: Buffer | Blob;
-}
-
-export class ImageEmbedImpl implements ImageEmbed {
-  readonly $type = "app.bsky.embed.images#image";
-  [k: string]: unknown;
-
-  constructor(
-    public alt: string,
-    public image: BlobRef,
-    public mimeType: string,
-    public uploadData?: Buffer | Blob
-  ) {}
-
-  toJSON() {
-    return {
-      $type: this.$type,
-      alt: this.alt,
-      image: this.image,
-    };
-  }
-}
-
-export interface ImagesEmbed extends AppBskyEmbedImages.Main {
-  $type: "app.bsky.embed.images";
-  images: ImageEmbed[];
-}
-
-type EmbeddedMedia = VideoEmbed | ImagesEmbed;
-
-export class VideoEmbedImpl implements VideoEmbed {
-  readonly $type = "app.bsky.embed.video";
-  [k: string]: unknown;
-
-  constructor(
-    public alt: string | undefined,
-    public buffer: Buffer,
-    public mimeType: string,
-    public size: number | undefined,
-    public video: BlobRef,
-    public aspectRatio?: AppBskyEmbedDefs.AspectRatio,
-    public captions?: AppBskyEmbedVideo.Caption[]
-  ) {}
-
-  toJSON() {
-    return {
-      $type: this.$type,
-      alt: this.alt,
-      buffer: "[Buffer length=" + this.buffer.length + "]",
-      mimeType: this.mimeType,
-      size: this.size,
-      video: this.video,
-    };
-  }
-}
-
-export class ImagesEmbedImpl implements ImagesEmbed {
-  readonly $type = "app.bsky.embed.images";
-  [k: string]: unknown;
-
-  constructor(public images: ImageEmbed[]) {}
-}
-
-export interface PostRecord extends Partial<AppBskyFeedPost.Record> {}
-
-/**
- * Simple bluesky record.
- * @see AppBskyFeedPost.Record
- */
-export class PostRecordImpl implements PostRecord {
-  readonly $type = "app.bsky.feed.post";
-  [k: string]: unknown;
-
-  constructor(
-    public text: string,
-    public createdAt: string,
-    public facets: AppBskyRichtextFacet.Main[],
-    public embed: EmbeddedMedia
-  ) {}
-}
 
 export class BlueskyClient {
   private readonly agent: AtpAgent;

@@ -1,7 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffprobe from '@ffprobe-installer/ffprobe';
 import { logger } from '../logger/logger'
-import { BlueskyClient, VideoEmbed } from '../bluesky/bluesky';
+import { BlueskyClient, VideoEmbed } from '../bluesky';
 import { BlobRef } from '@atproto/api';
 
 // Configure ffmpeg to use ffprobe
