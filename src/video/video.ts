@@ -1,7 +1,8 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffprobe from '@ffprobe-installer/ffprobe';
-import { logger } from './logger'
-import { BlueskyClient } from './bluesky';
+import { logger } from '../logger/logger'
+import { BlueskyClient, VideoEmbed } from '../bluesky/bluesky';
+import { BlobRef } from '@atproto/api';
 
 // Configure ffmpeg to use ffprobe
 ffmpeg.setFfprobePath(ffprobe.path);
@@ -51,31 +52,87 @@ export async function getVideoDimensions(filePath: string): Promise<{width: numb
   });
 }
 
-/**
- * Prepares video for Bluesky upload by creating required metadata
- * @returns Promise<{ref: string, mimeType: string, size: number, dimensions: {width: number, height: number}}>
- */
-export async function prepareVideoUpload(filePath: string, buffer: Buffer): Promise<{
-  ref: string,
-  mimeType: string,
-  size: number,
-  dimensions: {width: number, height: number}
-}> {
-  // Validate video size
+export interface VideoUploadData {
+  ref: BlobRef | undefined;
+  mimeType: string;
+  size: number;
+  dimensions: {
+    width: number;
+    height: number;
+  };
+}
+
+export class VideoUploadDataImpl implements VideoUploadData {
+  constructor(
+    public ref: BlobRef | undefined,
+    public mimeType: string,
+    public size: number,
+    public dimensions: {
+      width: number;
+      height: number;
+    }
+  ) {}
+
+  static createDefault(buffer: Buffer): VideoUploadDataImpl {
+    return new VideoUploadDataImpl(
+      undefined, // empty ref to be filled later
+      'video/mp4',
+      buffer.length,
+      { width: 640, height: 640 }
+    );
+  }
+}
+
+// TODO not setting a blobref screams the wrong place blobref is for bluesky not video processing.
+export async function prepareVideoUpload(filePath: string, buffer: Buffer): Promise<VideoUploadData> {
   if (!validateVideo(buffer)) {
     throw new Error('Video validation failed');
   }
 
-  // Get video dimensions
-  const dimensions = await getVideoDimensions(filePath);
+  return VideoUploadDataImpl.createDefault(buffer);
+}
 
-  // Return video metadata in Bluesky format
-  return {
-    ref: '', // This will be filled by the upload process with the CID
-    mimeType: 'video/mp4',
-    size: buffer.length,
-    dimensions
+export interface VideoEmbedOutput {
+  $type: "app.bsky.embed.video";
+  video: {
+    $type: string;
+    ref: { $link: string };
+    mimeType: string;
+    size: number;
   };
+  aspectRatio: {
+    width: number;
+    height: number;
+  };
+}
+
+export class VideoEmbedOutputImpl implements VideoEmbedOutput {
+  readonly $type = "app.bsky.embed.video";
+  readonly video: {
+    $type: string;
+    ref: { $link: string };
+    mimeType: string;
+    size: number;
+  };
+  readonly aspectRatio: {
+    width: number;
+    height: number;
+  };
+
+  constructor(
+    ref: string,
+    mimeType: string,
+    size: number,
+    dimensions: { width: number; height: number }
+  ) {
+    this.video = {
+      $type: "blob",
+      ref: { $link: ref },
+      mimeType,
+      size
+    };
+    this.aspectRatio = dimensions;
+  }
 }
 
 /**
@@ -86,25 +143,26 @@ export function createVideoEmbed(videoData: {
   mimeType: string,
   size: number,
   dimensions: {width: number, height: number}
-}) {
-  return {
-    $type: "app.bsky.embed.video",
-    video: {
-      $type: "blob",
-      ref: {
-        $link: videoData.ref
-      },
-      mimeType: videoData.mimeType,
-      size: videoData.size
-    },
-    aspectRatio: {
-      width: videoData.dimensions.width,
-      height: videoData.dimensions.height
-    }
-  };
-} 
+}): VideoEmbedOutput {
+  return new VideoEmbedOutputImpl(
+    videoData.ref,
+    videoData.mimeType,
+    videoData.size,
+    videoData.dimensions
+  );
+}
 
-
+/**
+ * Processes a video file for posting to Bluesky, including metadata preparation and upload
+ * 
+ * @param filePath - The path to the video file being processed
+ * @param buffer - The video file contents as a Buffer
+ * @param bluesky - BlueskyClient instance for uploading, or null if not uploading
+ * @param simulate - If true, skips the actual upload to Bluesky
+ * 
+ * @returns A video embed structure ready for posting to Bluesky
+ * @throws {Error} If video buffer is undefined or upload fails
+ */
 export async function processVideoPost(
   filePath: string,
   buffer: Buffer,
@@ -127,11 +185,13 @@ export async function processVideoPost(
 
     // Upload video to get CID
     if (!simulate && bluesky) {
+
+      // TODO isolate this logic and remove it only being placed into the media directory.
       const blob = await bluesky.uploadVideo(buffer);
-      if (!blob?.ref?.$link) {
+      if (!blob?.ref) {
         throw new Error("Failed to get video upload reference");
       }
-      videoData.ref = blob.ref.$link;
+      videoData.ref.$link = blob.ref.$link;
     }
 
     // Create video embed structure

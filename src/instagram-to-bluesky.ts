@@ -3,10 +3,10 @@ import FS from 'fs';
 import path from 'path';
 import * as process from 'process';
 
-import { BlueskyClient } from './bluesky';
-import { logger } from './logger';
-import { processPost } from './media';
-import { createVideoEmbed, prepareVideoUpload } from './video';
+import { BlueskyClient } from './bluesky/bluesky';
+import { logger } from './logger/logger';
+import { processPost } from './media/media';
+import { createVideoEmbed, prepareVideoUpload } from './video/video';
 
 dotenv.config();
 

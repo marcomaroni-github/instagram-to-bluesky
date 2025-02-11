@@ -1,12 +1,8 @@
 import {
-  ImageEmbed,
-  VideoEmbed,
-  ImageEmbedImpl,
-  VideoEmbedImpl,
   BlueskyClient,
-} from "./bluesky";
-import { logger } from "./logger";
-import { validateVideo, processVideoPost } from "./video";
+} from "../bluesky/bluesky";
+import { logger } from "../logger/logger";
+import { validateVideo, processVideoPost } from "../video/video";
 import FS from "fs";
 
 export interface MediaProcessResult {
@@ -16,10 +12,34 @@ export interface MediaProcessResult {
   isVideo: boolean;
 }
 
+/**
+ * Processed media from instagram post that supports logging.
+ */
+export class MediaProcessResultImpl implements MediaProcessResult {
+  constructor(
+    public mediaText: string,
+    public mimeType: string | null,
+    public mediaBuffer: Buffer | null,
+    public isVideo: boolean
+  ) {}
+
+  toJSON() {
+    return {
+      mediaText: this.mediaText,
+      mimeType: this.mimeType,
+      mediaBuffer: this.mediaBuffer ? "[Buffer length=" + this.mediaBuffer.length + "]" : null,
+      isVideo: this.isVideo
+    };
+  }
+}
+
+/**
+ * Instagram post thats been processed to be transformed into a Bluesky post.
+ */
 export interface ProcessedPost {
   postDate: Date | null;
   postText: string;
-  embeddedMedia: VideoEmbed | ImageEmbed[];
+  embeddedMedia: MediaProcessResult | MediaProcessResult[];
   mediaCount: number;
 }
 
@@ -62,7 +82,7 @@ export async function processMedia(
       message: `Failed to read media file: ${mediaFilename}`,
       error,
     });
-    return { mediaText: "", mimeType: null, mediaBuffer: null, isVideo: false };
+    return new MediaProcessResultImpl("", null, null, false);
   }
 
   let mediaText = media.title ?? "";
@@ -87,7 +107,7 @@ export async function processMedia(
     Type: isVideo ? "Video" : "Image",
   });
 
-  return { mediaText: truncatedText, mimeType, mediaBuffer, isVideo };
+  return new MediaProcessResultImpl(truncatedText, mimeType, mediaBuffer, isVideo);
 }
 
 export async function processPost(
@@ -123,35 +143,35 @@ export async function processPost(
     postDate = postDate || new Date(post.media[0].creation_timestamp * 1000);
   }
 
-  let embeddedMedia: ImageEmbed[] = [];
+  let embeddedMedia: MediaProcessResult[] = [];
   let mediaCount = 0;
 
   // If first media is video, process only that
   const firstMedia = await processMedia(post.media[0], archiveFolder);
   if (firstMedia.isVideo) {
-    let embeddedVideo: VideoEmbed;
+    let embeddedVideo: MediaProcessResult;
     if (
       firstMedia.mimeType &&
       firstMedia.mediaBuffer &&
       validateVideo(firstMedia.mediaBuffer)
     ) {
-      embeddedVideo = new VideoEmbedImpl(
+      embeddedVideo = new MediaProcessResultImpl(
         firstMedia.mediaText,
+        firstMedia.mimeType,
         firstMedia.mediaBuffer,
-        firstMedia.mimeType
+        true
       );
       mediaCount = 1;
       // Handle video if present
       try {
         const videoEmbed = await processVideoPost(
           post.media[0].uri,
-          embeddedVideo.buffer,
+          firstMedia.mediaBuffer,
           bluesky,
           simulate
         );
 
-        // TODO fix typing errors
-        embeddedVideo = videoEmbed as unknown as VideoEmbed;
+        embeddedVideo = videoEmbed as MediaProcessResult;
         logger.debug({
           message: "Video processing complete",
           hasVideoEmbed: !!videoEmbed,
@@ -185,7 +205,12 @@ export async function processPost(
     if (!mimeType || !mediaBuffer || isVideo) continue;
 
     embeddedMedia.push(
-      new ImageEmbedImpl(mediaText, mediaBuffer, mimeType)
+      new MediaProcessResultImpl(
+        mediaText,
+        mimeType,
+        mediaBuffer,
+        false
+      )
     );
     mediaCount++;
   }
