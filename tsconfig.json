@@ -9,9 +9,15 @@
     "strict": true,
     "noImplicitAny": false,
     "skipLibCheck": true,
+    "moduleDetection": "auto",
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"]
+      "@src/*": ["src/*"],
+      "@bluesky/*": ["src/bluesky/*"],
+      "@image/*": ["src/image/*"],
+      "@logger/*": ["src/logger/*"],
+      "@media/*": ["src/media/*"],
+      "@video/*": ["src/video/*"]
     },
     "outDir": "./dist",
     "rootDir": "./src",

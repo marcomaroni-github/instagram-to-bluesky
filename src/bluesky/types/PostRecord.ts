@@ -1,5 +1,5 @@
-import { AppBskyFeedPost, AppBskyRichtextFacet } from "@atproto/api";
-import { EmbeddedMedia } from "./EmbeddedMedia";
+import { AppBskyFeedPost, Facet } from "@atproto/api";
+import { EmbeddedMedia } from "./EmbeddedMedia.js";
 
 export interface PostRecord extends Partial<AppBskyFeedPost.Record> {}
 
@@ -10,7 +10,7 @@ export class PostRecordImpl implements PostRecord {
   constructor(
     public text: string,
     public createdAt: string,
-    public facets: AppBskyRichtextFacet.Main[],
+    public facets: Facet[],
     public embed: EmbeddedMedia
   ) {}
 } 

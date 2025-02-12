@@ -1,9 +1,9 @@
 import fs from 'fs';
 
-import { BlueskyClient } from '../src/bluesky';
-import { main, formatDuration, calculateEstimatedTime } from '../src/instagram-to-bluesky';
-import { logger } from '../src/logger';
-import { processPost } from '../src/media';
+import { main, formatDuration, calculateEstimatedTime } from '@src/instagram-to-bluesky.js';
+import { BlueskyClient } from '@src/bluesky/bluesky.js';
+import { logger } from '@src/logger/logger.js';
+import { processPost } from '@src/media/index.js';
 
 // Mock all dependencies
 jest.mock('fs');

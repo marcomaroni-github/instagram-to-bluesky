@@ -1,47 +1,12 @@
-import {
-  BlueskyClient,
-} from "../bluesky/bluesky";
-import { logger } from "../logger/logger";
-import { validateVideo, processVideoPost } from "../video/video";
 import FS from "fs";
 
-export interface MediaProcessResult {
-  mediaText: string;
-  mimeType: string | null;
-  mediaBuffer: Buffer | null;
-  isVideo: boolean;
-}
-
-/**
- * Processed media from instagram post that supports logging.
- */
-export class MediaProcessResultImpl implements MediaProcessResult {
-  constructor(
-    public mediaText: string,
-    public mimeType: string | null,
-    public mediaBuffer: Buffer | null,
-    public isVideo: boolean
-  ) {}
-
-  toJSON() {
-    return {
-      mediaText: this.mediaText,
-      mimeType: this.mimeType,
-      mediaBuffer: this.mediaBuffer ? "[Buffer length=" + this.mediaBuffer.length + "]" : null,
-      isVideo: this.isVideo
-    };
-  }
-}
-
-/**
- * Instagram post thats been processed to be transformed into a Bluesky post.
- */
-export interface ProcessedPost {
-  postDate: Date | null;
-  postText: string;
-  embeddedMedia: MediaProcessResult | MediaProcessResult[];
-  mediaCount: number;
-}
+import {
+  BlueskyClient,
+} from "@bluesky/bluesky.js";
+import { logger } from "@logger/logger.js";
+import { validateVideo, processVideoPost } from "@video/video.js";
+import { ProcessedPost } from "./ProcessedPost.js";
+import { MediaProcessResult, MediaProcessResultImpl } from "./MediaProcessResult.js";
 
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
@@ -65,6 +30,12 @@ export function getMimeType(fileType: string): string {
   }
 }
 
+/**
+ * Transforms media (image(s)/video) from social media format to a object that can be uploaded to bluesky to become embedded media.
+ * @param media 
+ * @param archiveFolder 
+ * @returns 
+ */
 export async function processMedia(
   media: any,
   archiveFolder: string
@@ -110,6 +81,14 @@ export async function processMedia(
   return new MediaProcessResultImpl(truncatedText, mimeType, mediaBuffer, isVideo);
 }
 
+/**
+ * Transforms post content from social media format into the bluesky post format.
+ * @param post 
+ * @param archiveFolder 
+ * @param bluesky 
+ * @param simulate 
+ * @returns 
+ */
 export async function processPost(
   post: any,
   archiveFolder: string,
@@ -222,3 +201,5 @@ export async function processPost(
     mediaCount,
   };
 }
+
+

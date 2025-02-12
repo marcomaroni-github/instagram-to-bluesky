@@ -3,10 +3,9 @@ import FS from 'fs';
 import path from 'path';
 import * as process from 'process';
 
-import { BlueskyClient } from './bluesky/bluesky';
-import { logger } from './logger/logger';
-import { processPost } from './media/media';
-import { createVideoEmbed, prepareVideoUpload } from './video/video';
+import { BlueskyClient } from './bluesky/bluesky.js';
+import { logger } from './logger/logger.js';
+import { processPost } from './media/media.js';
 
 dotenv.config();
 
@@ -209,6 +208,9 @@ export async function main() {
           setTimeout(resolve, API_RATE_LIMIT_DELAY)
         );
         try {
+
+
+          // Create post with embedded pre-uploaded data.
           const postUrl = await bluesky.createPost(
             postDate,
             postText,

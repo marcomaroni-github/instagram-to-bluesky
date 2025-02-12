@@ -1,5 +1,5 @@
 import { AppBskyEmbedImages } from "@atproto/api";
-import { ImageEmbed } from "./ImageEmbed";
+import { ImageEmbed } from "./ImageEmbed.js";
 
 export interface ImagesEmbed extends AppBskyEmbedImages.Main {
   $type: "app.bsky.embed.images";

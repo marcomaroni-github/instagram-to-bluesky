@@ -1,7 +1,6 @@
-import { validateVideo, getVideoDimensions } from './video';
+import { validateVideo, getVideoDimensions, processVideoPost } from './video.js';
 import path from 'path';
-import { processVideoPost } from './video';
-import { BlueskyClient } from '../bluesky/bluesky';
+import { BlueskyClient } from '@bluesky/bluesky.js';
 
 describe('Video Processing', () => {
   const testVideoPath = path.join(__dirname, '../transfer/test_videos/AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4');

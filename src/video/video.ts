@@ -1,7 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffprobe from '@ffprobe-installer/ffprobe';
-import { logger } from '../logger/logger'
-import { BlueskyClient, VideoEmbed } from '../bluesky';
+import { logger } from '@logger/logger.js'
+import { BlueskyClient } from '@bluesky/bluesky.js';
 import { BlobRef } from '@atproto/api';
 
 // Configure ffmpeg to use ffprobe
@@ -94,12 +94,7 @@ export async function prepareVideoUpload(filePath: string, buffer: Buffer): Prom
 
 export interface VideoEmbedOutput {
   $type: "app.bsky.embed.video";
-  video: {
-    $type: string;
-    ref: { $link: string };
-    mimeType: string;
-    size: number;
-  };
+  video: BlobRef;
   aspectRatio: {
     width: number;
     height: number;
@@ -108,29 +103,19 @@ export interface VideoEmbedOutput {
 
 export class VideoEmbedOutputImpl implements VideoEmbedOutput {
   readonly $type = "app.bsky.embed.video";
-  readonly video: {
-    $type: string;
-    ref: { $link: string };
-    mimeType: string;
-    size: number;
-  };
+  readonly video: BlobRef;
   readonly aspectRatio: {
     width: number;
     height: number;
   };
 
   constructor(
-    ref: string,
+    ref: BlobRef,
     mimeType: string,
     size: number,
     dimensions: { width: number; height: number }
   ) {
-    this.video = {
-      $type: "blob",
-      ref: { $link: ref },
-      mimeType,
-      size
-    };
+    this.video = ref;
     this.aspectRatio = dimensions;
   }
 }
@@ -138,22 +123,60 @@ export class VideoEmbedOutputImpl implements VideoEmbedOutput {
 /**
  * Creates the video embed structure for Bluesky post
  */
-export function createVideoEmbed(videoData: {
-  ref: string,
-  mimeType: string,
-  size: number,
-  dimensions: {width: number, height: number}
-}): VideoEmbedOutput {
+export function createVideoEmbed(videoData: VideoUploadData): VideoEmbedOutput {
   return new VideoEmbedOutputImpl(
-    videoData.ref,
+    videoData.ref!,
     videoData.mimeType,
     videoData.size,
     videoData.dimensions
   );
 }
 
+
 /**
- * Processes a video file for posting to Bluesky, including metadata preparation and upload
+ * 
+ *       // Handle image uploads if present
+      if (Array.isArray(embeddedMedia) && AppBskyEmbedImages.isImage(embeddedMedia[0])) {
+        const imagesMedia: ImageEmbed[] = embeddedMedia;
+        const uploadedImages = await Promise.all(
+          imagesMedia.map(async (media) => {
+            const blob = await this.uploadImage(
+              media.image,
+              media.mimeType
+            );
+            return new ImageEmbedImpl(
+              media.alt,
+              blob,
+              media.mimeType,
+              media.uploadData
+            );
+          })
+        );
+
+        embeddedMedia = new ImagesEmbedImpl(uploadedImages);
+      } else if (AppBskyEmbedVideo.isMain(embeddedMedia)) {
+        // Upload video first
+        const videoBlobRef = await this.uploadVideo(
+          embeddedMedia.buffer,
+          embeddedMedia.mimeType
+        );
+        // Now transform the embed
+        embeddedMedia = new VideoEmbedImpl(
+          "",
+          embeddedMedia.buffer,
+          embeddedMedia.mimeType,
+          embeddedMedia.size,
+          videoBlobRef,
+          embeddedMedia.aspectRatio,
+          embeddedMedia.captions
+        );
+      }
+ * 
+ */
+
+
+/**
+ * Processes a video file for posting to Bluesky, including metadata preparation and upload.
  * 
  * @param filePath - The path to the video file being processed
  * @param buffer - The video file contents as a Buffer
@@ -185,13 +208,11 @@ export async function processVideoPost(
 
     // Upload video to get CID
     if (!simulate && bluesky) {
-
-      // TODO isolate this logic and remove it only being placed into the media directory.
       const blob = await bluesky.uploadVideo(buffer);
       if (!blob?.ref) {
         throw new Error("Failed to get video upload reference");
       }
-      videoData.ref.$link = blob.ref.$link;
+      videoData.ref = blob;
     }
 
     // Create video embed structure

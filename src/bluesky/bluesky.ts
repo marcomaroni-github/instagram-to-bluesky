@@ -6,15 +6,16 @@ import {
   AppBskyEmbedImages,
 } from "@atproto/api";
 
-import { logger } from "../logger/logger";
+import { logger } from "@logger/logger.js";
 
 import {
   ImageEmbed,
   EmbeddedMedia,
   ImageEmbedImpl,
   VideoEmbedImpl,
-  ImagesEmbedImpl
-} from "./types";
+  ImagesEmbedImpl,
+  PostRecordImpl
+} from "./types/index.js";
 
 
 export class BlueskyClient {
@@ -89,57 +90,27 @@ export class BlueskyClient {
     }
   }
 
+  /**
+   * Creates a post on Bluesky.
+   * @param postDate 
+   * @param postText 
+   * @param embeddedMedia 
+   * @returns 
+   */
   async createPost(
     postDate: Date,
     postText: string,
     embeddedMedia: EmbeddedMedia
   ): Promise<string | null> {
     try {
-      // Handle image uploads if present
-      if (Array.isArray(embeddedMedia) && AppBskyEmbedImages.isImage(embeddedMedia[0])) {
-        const imagesMedia: ImageEmbed[] = embeddedMedia;
-        const uploadedImages = await Promise.all(
-          imagesMedia.map(async (media) => {
-            const blob = await this.uploadImage(
-              media.image,
-              media.mimeType
-            );
-            return new ImageEmbedImpl(
-              media.alt,
-              blob,
-              media.mimeType,
-              media.uploadData
-            );
-          })
-        );
-
-        embeddedMedia = new ImagesEmbedImpl(uploadedImages);
-      } else if (AppBskyEmbedVideo.isMain(embeddedMedia)) {
-        // Upload video first
-        const videoBlobRef = await this.uploadVideo(
-          embeddedMedia.buffer,
-          embeddedMedia.mimeType
-        );
-        // Now transform the embed
-        embeddedMedia = new VideoEmbedImpl(
-          "",
-          embeddedMedia.buffer,
-          embeddedMedia.mimeType,
-          embeddedMedia.size,
-          videoBlobRef,
-          embeddedMedia.aspectRatio,
-          embeddedMedia.captions
-        );
-      }
-
       const rt = new RichText({ text: postText });
       await rt.detectFacets(this.agent);
 
       // create blsky post record.
-      const postRecord = new PostRecord(
+      const postRecord = new PostRecordImpl(
         rt.text,
         postDate.toISOString(),
-        rt.facets,
+        rt.facets!,
         embeddedMedia
       );
 

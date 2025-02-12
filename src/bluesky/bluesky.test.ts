@@ -1,16 +1,12 @@
 import { BlobRef } from '@atproto/api';
 
-import { mock } from 'node:test';
-
 import { CID } from 'multiformats';
-import { createHash } from 'multiformats/hashes';
-import { sha256 } from 'multiformats/hashes/sha2';
-import { toMultihash } from 'multiformats/hashes/sha2';
 
 import fs from 'fs';
 
-import { BlueskyClient } from './bluesky';
-import { ImagesEmbedImpl, VideoEmbedImpl } from './types';
+import { BlueskyClient } from './bluesky.js';
+
+import { ImagesEmbedImpl, VideoEmbedImpl } from './types/index.js';
 
 const TEST_VIDEO_PATH = './transfer/test_videos/AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4';
 
@@ -60,16 +56,19 @@ jest.mock('@atproto/api', () => ({
 describe('BlueskyClient', () => {
   let client: BlueskyClient;
   let mockCID: CID;
+  let videoBuffer: Buffer;
 
   beforeEach(() => {
     client = new BlueskyClient('test-user', 'test-pass');
   });
 
   beforeAll(async () => {
-    const videoBuffer = fs.readFileSync(TEST_VIDEO_PATH);
-    const hash = await sha256.encode(videoBuffer);
-    const multihash = toMultihash(hash);
-    mockCID = CID.create(1, 0x71, multihash);
+    videoBuffer = fs.readFileSync(TEST_VIDEO_PATH);
+    /**
+     * CID from test video uploaded to Pinata.cloud.
+     * Creating CID from the video proved to be too challenging.
+     */
+    mockCID = CID.parse('bafybeibssikmpbeu3z7ezozo7447go7gpneqgblsyo2owed4qleljptmeu')
   });
 
   test('should create post successfully', async () => {
@@ -106,10 +105,9 @@ describe('BlueskyClient', () => {
   });
 
   test('should create video post successfully', async () => {
-    const buffer = fs.readFileSync(TEST_VIDEO_PATH);
     const videoEmbed = new VideoEmbedImpl(
       'test video',
-      buffer,
+      videoBuffer,
       'video/mp4',
       1000,
       new BlobRef(mockCID, 'video/mp4', 1000)

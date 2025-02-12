@@ -1,5 +1,9 @@
 import { AppBskyEmbedImages, BlobRef } from "@atproto/api";
 
+
+/**
+ * Image uploaded to bluesky, containing BlobRef CID.
+ */
 export interface ImageEmbed extends AppBskyEmbedImages.Image {
   $type: "app.bsky.embed.images#image";
   alt: string;
@@ -8,6 +12,9 @@ export interface ImageEmbed extends AppBskyEmbedImages.Image {
   uploadData?: Buffer | Blob;
 }
 
+/**
+ * Image uploaded to bluesky, containing BlobRef CID.
+ */
 export class ImageEmbedImpl implements ImageEmbed {
   readonly $type = "app.bsky.embed.images#image";
   [k: string]: unknown;
