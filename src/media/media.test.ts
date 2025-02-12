@@ -20,7 +20,7 @@ jest.mock("../logger/logger", () => ({
 
 // Mock the video validation
 jest.mock("../video/video", () => ({
-  validateVideo: jest.fn().mockReturnValue(true)
+  validateVideo: jest.fn().mockReturnValue(false)
 }));
 
 describe("Instagram Media Processing", () => {
