@@ -10,16 +10,23 @@ const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
 
 interface MediaProcessingStrategy {
+  /**
+   * Processes instagram post and media data into a format easily mapped to Blueskys requirements.
+   */
   process(): Promise<ProcessedPost>;
+  /**
+   * Determine the MIME type of the media file.
+   */
   getMimeType(): string;
 }
 export class MediaProcessor {
-  instagramMedia: any;
+
+  constructor(public instagramMedia: any){}
 
   protected process(): Promise<ProcessedPost> {
     throw Error('Unimplemented strategy pattern.');
   }
-  protected getMimeType(fileType: string): string {
+  public static getMimeType(fileType: string): string {
     switch (fileType.toLowerCase()) {
       // TODO move image formats into a the image layer.
       case "heic":
@@ -51,7 +58,7 @@ export async function processMedia(
 ): Promise<MediaProcessResult> {
   const mediaDate = new Date(media.creation_timestamp * 1000);
   const fileType = media.uri.substring(media.uri.lastIndexOf(".") + 1);
-  const mimeType = getMimeType(fileType);
+  const mimeType = MediaProcessor.getMimeType(fileType);
   const mediaFilename = `${archiveFolder}/${media.uri}`;
 
   let mediaBuffer;
