@@ -56,6 +56,6 @@ export type Media = ImageMedia | VideoMedia;
  * Represents posts_1.json data export from Instagram as of 2025/02/11.
  */
 export interface InstagramExportedPost extends CreationTimestamp {
-  media: Media[];
+  media: Media[] | Media;
   title: string;
 }
