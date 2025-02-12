@@ -1,7 +1,7 @@
 import fs from "fs";
 
-import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor } from "./media.js";
-import { InstagramExportedPost, VideoMedia, ImageMedia } from "./InstagramExportedPost.js";
+import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor } from "./media";
+import { InstagramExportedPost, VideoMedia, ImageMedia } from "./InstagramExportedPost";
 
 // Mock the file system
 jest.mock("fs", () => ({
@@ -9,7 +9,7 @@ jest.mock("fs", () => ({
 }));
 
 // Mock the logger
-jest.mock("@logger/logger", () => ({
+jest.mock("../logger/logger", () => ({
   logger: {
     error: jest.fn(),
     warn: jest.fn(),
@@ -19,7 +19,7 @@ jest.mock("@logger/logger", () => ({
 }));
 
 // Mock the video validation
-jest.mock("../src/video", () => ({
+jest.mock("../video/video", () => ({
   validateVideo: jest.fn().mockReturnValue(true)
 }));
 

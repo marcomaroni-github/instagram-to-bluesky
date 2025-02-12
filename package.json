@@ -2,8 +2,7 @@
   "name": "instagramtobluesky",
   "version": "0.3.0",
   "description": "Import Instagram archive to a Bluesky account",
-  "type": "module",
-  "main": "app.js",
+  "main": "main.js",
   "engines": {
     "node": ">=20.12.0"
   },

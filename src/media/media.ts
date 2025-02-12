@@ -1,19 +1,19 @@
 import FS from "fs";
 
-import { logger } from "@logger/logger.js";
-import { validateVideo } from "@video/video.js";
-import { ProcessedPost, ProcessedPostImpl } from "./ProcessedPost.js";
+import { logger } from "../logger/logger";
+import { validateVideo } from "../video/video";
+import { ProcessedPost, ProcessedPostImpl } from "./ProcessedPost";
 import {
   MediaProcessResult,
   ImageMediaProcessResultImpl,
   VideoMediaProcessResultImpl,
-} from "./MediaProcessResult.js";
+} from "./MediaProcessResult";
 import {
   ImageMedia,
   InstagramExportedPost,
   Media,
   VideoMedia,
-} from "./InstagramExportedPost.js";
+} from "./InstagramExportedPost";
 // TODO make a stratgey pattern for video versus image
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
