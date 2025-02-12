@@ -5,18 +5,16 @@ export interface MediaProcessResult {
   mediaText: string;
   mimeType: string | null;
   mediaBuffer: Buffer | null;
-  isVideo: boolean;
 }
 
 /**
- * Social media data processed to be uploaded to Bluesky.
+ * Social media image processed to be uploaded to Bluesky.
  */
-export class MediaProcessResultImpl implements MediaProcessResult {
+export class ImageMediaProcessResultImpl implements MediaProcessResult {
   constructor(
     public mediaText: string,
     public mimeType: string | null,
-    public mediaBuffer: Buffer | null,
-    public isVideo: boolean
+    public mediaBuffer: Buffer | null
   ) {}
 
   toJSON() {
@@ -24,7 +22,26 @@ export class MediaProcessResultImpl implements MediaProcessResult {
       mediaText: this.mediaText,
       mimeType: this.mimeType,
       mediaBuffer: this.mediaBuffer ? "[Buffer length=" + this.mediaBuffer.length + "]" : null,
-      isVideo: this.isVideo
+    };
+  }
+} 
+
+
+/**
+ * Social media video processed to be uploaded to Bluesky.
+ */
+export class VideoMediaProcessResultImpl implements MediaProcessResult {
+  constructor(
+    public mediaText: string,
+    public mimeType: string | null,
+    public mediaBuffer: Buffer | null
+  ) {}
+
+  toJSON() {
+    return {
+      mediaText: this.mediaText,
+      mimeType: this.mimeType,
+      mediaBuffer: this.mediaBuffer ? "[Buffer length=" + this.mediaBuffer.length + "]" : null,
     };
   }
 } 
