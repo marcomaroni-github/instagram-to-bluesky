@@ -1,7 +1,5 @@
 import { BlobRef } from '@atproto/api';
 
-// import { CID } from 'multiformats';
-
 import fs from 'fs';
 
 import { BlueskyClient } from './bluesky';
@@ -45,11 +43,6 @@ describe('BlueskyClient', () => {
   beforeAll(async () => {
     videoBuffer = fs.readFileSync(TEST_VIDEO_PATH);
     imageBuffer = fs.readFileSync(TEST_IMAGE_PATH);
-    /**
-     * CID from test video uploaded to Pinata.cloud.
-     * Creating CID from the video proved to be too challenging.
-     */
-    // mockCID = CID.parse('bafybeibssikmpbeu3z7ezozo7447go7gpneqgblsyo2owed4qleljptmeu')
   });
 
   test('should create post successfully', async () => {
