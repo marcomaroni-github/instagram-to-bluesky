@@ -43,49 +43,29 @@ export class BlueskyClient {
   }
 
   /**
-   * Upload video file and get blob reference
+   * Upload media file (image or video) and get blob reference
+   * @param buffer The media file buffer
+   * @param mimeType The MIME type of the media (defaults to image/jpeg)
    */
-  async uploadVideo(
-    buffer: Buffer,
-    mimeType: string = "video/mp4"
-  ): Promise<BlobRef> {
-    try {
-      logger.debug("Starting video upload process...");
-      const response = await this.agent.uploadBlob(buffer, {
-        encoding: mimeType,
-      });
-
-      if (!response?.data?.blob) {
-        throw new Error("Failed to get video upload reference");
-      }
-
-      return response.data.blob;
-    } catch (error) {
-      logger.error("Failed to upload video:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Upload image file and get blob reference
-   */
-  async uploadImage(
+  async uploadMedia(
     buffer: Buffer | Blob,
     mimeType: string = "image/jpeg"
   ): Promise<BlobRef> {
     try {
-      logger.debug("Uploading image...");
+      const mediaType = mimeType.startsWith('video') ? 'video' : 'image';
+      logger.debug(`Uploading ${mediaType}...`);
+      
       const response = await this.agent.uploadBlob(buffer, {
         encoding: mimeType,
       });
 
       if (!response?.data?.blob) {
-        throw new Error("Failed to get image upload reference");
+        throw new Error(`Failed to get ${mediaType} upload reference`);
       }
 
       return response.data.blob;
     } catch (error) {
-      logger.error("Failed to upload image:", error);
+      logger.error(`Failed to upload media with mimeType: ${mimeType}:`, error);
       throw error;
     }
   }

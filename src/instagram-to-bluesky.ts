@@ -1,12 +1,20 @@
-import * as dotenv from 'dotenv';
-import FS from 'fs';
-import path from 'path';
-import * as process from 'process';
+import * as dotenv from "dotenv";
+import FS from "fs";
+import path from "path";
+import * as process from "process";
 
-import { BlueskyClient } from './bluesky/bluesky.js';
-import { logger } from './logger/logger.js';
-import { decodeUTF8, processPost } from './media/media.js';
-import { InstagramExportedPost } from './media/InstagramExportedPost.js';
+import { BlueskyClient } from "./bluesky/bluesky";
+import { logger } from "./logger/logger";
+import { decodeUTF8, InstagramMediaProcessor } from "./media/media";
+import { InstagramExportedPost } from "./media/InstagramExportedPost";
+import {
+  EmbeddedMedia,
+  ImageEmbed,
+  ImageEmbedImpl,
+  ImagesEmbedImpl,
+  VideoEmbedImpl,
+} from "./bluesky/index";
+import { BlobRef } from "@atproto/api";
 
 dotenv.config();
 
@@ -57,7 +65,7 @@ export function calculateEstimatedTime(importedMedia: number): string {
 }
 
 /**
- * 
+ *
  */
 export async function main() {
   // Set environment variables within function scope, allows mocked unit testing.
@@ -120,7 +128,9 @@ export async function main() {
   const fInstaPosts: Buffer = FS.readFileSync(postsJsonPath);
 
   // Decode raw JSON data into an object.
-  const instaPosts: InstagramExportedPost[] = decodeUTF8(JSON.parse(fInstaPosts.toString()));
+  const instaPosts: InstagramExportedPost[] = decodeUTF8(
+    JSON.parse(fInstaPosts.toString())
+  );
 
   // Initialize counters for posts and media imports.
   let importedPosts = 0;
@@ -135,7 +145,7 @@ export async function main() {
       return ad - bd;
     });
 
-    // Check each posts/media's creation timestamp
+    // Preprocess posts before transforming into a normalized format.
     for (const post of sortedPosts) {
       let checkDate: Date | undefined;
       if (post.creation_timestamp) {
@@ -167,17 +177,23 @@ export async function main() {
         );
         break;
       }
+    }
 
+    // Create media processor that can handle multiple data formats.
+    const mediaProcessor = new InstagramMediaProcessor(
+      instaPosts,
+      archivalFolder
+    );
 
-      // TODO use media processor instead.
-      const {
-        postDate,
-        postText,
-        mediaCount,
-        embeddedMedia: initialMedia,
-      } = await processPost(post, archivalFolder);
-      let embeddedMedia: any = initialMedia;
-      
+    // Process posts with images and a video.
+    const processedPosts = await mediaProcessor.process();
+
+    for (const {
+      postDate,
+      postText,
+      embeddedMedia,
+      mediaCount,
+    } of processedPosts) {
       // If the post does not have a creation date after processing skip.
       if (!postDate) {
         logger.warn("Skipping post - Invalid date");
@@ -190,18 +206,54 @@ export async function main() {
           setTimeout(resolve, API_RATE_LIMIT_DELAY)
         );
         try {
+          let uploadedMedia: EmbeddedMedia | undefined;
 
+          if (embeddedMedia) {
+            if (Array.isArray(embeddedMedia)) {
+              const embeddedImages: ImageEmbed[] = [];
+              for (const imageMedia of embeddedMedia) {
+                const { mediaBuffer, mimeType } = imageMedia;
 
-          // Create post with embedded pre-uploaded data.
-          const postUrl = await bluesky.createPost(
-            postDate,
-            postText,
-            embeddedMedia
-          );
+                const blobRef: BlobRef = await bluesky.uploadMedia(
+                  mediaBuffer!,
+                  mimeType!
+                );
+                embeddedImages.push(
+                  new ImageEmbedImpl(postText, blobRef, mimeType!, mediaBuffer!)
+                );
+              }
 
-          if (postUrl) {
-            logger.info(`Bluesky post created with url: ${postUrl}`);
-            importedPosts++;
+              uploadedMedia = new ImagesEmbedImpl(embeddedImages);
+            } else {
+              const { mediaBuffer, mimeType } = embeddedMedia;
+              const blobRef = await bluesky.uploadMedia(
+                mediaBuffer!,
+                mimeType!
+              );
+              uploadedMedia = new VideoEmbedImpl(
+                postText,
+                mediaBuffer!,
+                mimeType!,
+                mediaBuffer?.length,
+                blobRef,
+                { width: 640, height: 640 }
+              );
+            }
+          }
+
+          if (uploadedMedia) {
+            // Create post with embedded pre-uploaded data.
+            const postUrl = await bluesky.createPost(
+              postDate,
+              postText,
+              uploadedMedia
+            );
+
+            // Log successful post creation
+            if (postUrl) {
+              logger.info(`Bluesky post created with url: ${postUrl}`);
+              importedPosts++;
+            }
           }
         } catch (error) {
           logger.error(
@@ -230,20 +282,20 @@ export async function main() {
       // Add the total media posted to inform the user.
       importedMedia += mediaCount;
     }
-  }
-  
-  // If we are simulating the migration we want to inform the user the estimated time it may take.
-  if (SIMULATE) {
-    const estimatedTime = calculateEstimatedTime(importedMedia);
-    logger.info(`Estimated time for real import: ${estimatedTime}`);
-  }
 
-  // Log the results for the user, end time, and the number of posts and media migrated.
-  const importEnd: Date = new Date();
-  logger.info(
-    `Import finished at ${importEnd.toISOString()}, imported ${importedPosts} posts with ${importedMedia} media`
-  );
-  // Inform the user the total time it took to migrate.
-  const totalTime = importEnd.getTime() - importStart.getTime();
-  logger.info(`Total import time: ${formatDuration(totalTime)}`);
+    // If we are simulating the migration we want to inform the user the estimated time it may take.
+    if (SIMULATE) {
+      const estimatedTime = calculateEstimatedTime(importedMedia);
+      logger.info(`Estimated time for real import: ${estimatedTime}`);
+    }
+
+    // Log the results for the user, end time, and the number of posts and media migrated.
+    const importEnd: Date = new Date();
+    logger.info(
+      `Import finished at ${importEnd.toISOString()}, imported ${importedPosts} posts with ${importedMedia} media`
+    );
+    // Inform the user the total time it took to migrate.
+    const totalTime = importEnd.getTime() - importStart.getTime();
+    logger.info(`Total import time: ${formatDuration(totalTime)}`);
+  }
 }
