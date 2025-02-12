@@ -9,7 +9,6 @@ export interface ImageEmbed extends AppBskyEmbedImages.Image {
   alt: string;
   image: BlobRef;
   mimeType: string;
-  uploadData?: Buffer | Blob;
 }
 
 /**
@@ -22,8 +21,7 @@ export class ImageEmbedImpl implements ImageEmbed {
   constructor(
     public alt: string,
     public image: BlobRef,
-    public mimeType: string,
-    public uploadData?: Buffer | Blob
+    public mimeType: string
   ) {}
 
   toJSON() {

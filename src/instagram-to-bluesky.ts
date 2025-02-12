@@ -219,7 +219,7 @@ export async function main() {
                   mimeType!
                 );
                 embeddedImages.push(
-                  new ImageEmbedImpl(postText, blobRef, mimeType!, mediaBuffer!)
+                  new ImageEmbedImpl(postText, blobRef, mimeType!)
                 );
               }
 
