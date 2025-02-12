@@ -222,6 +222,10 @@ export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
 
     const mediaBuffer = getMediaBuffer(archiveFolder, media);
 
+    if(validateVideo(mediaBuffer!)) {
+      throw Error('Video too large.')
+    }
+    
     return new VideoMediaProcessResultImpl(media.title, mimeType, mediaBuffer!);
   }
 }
