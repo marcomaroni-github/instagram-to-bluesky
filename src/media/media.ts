@@ -4,6 +4,7 @@ import { logger } from "@logger/logger.js";
 import { validateVideo } from "@video/video.js";
 import { ProcessedPost } from "./ProcessedPost.js";
 import { MediaProcessResult, MediaProcessResultImpl } from "./MediaProcessResult.js";
+import { InstagramExportedPost, Media } from "./InstagramExportedPost.js";
 // TODO make a stratgey pattern for video versus image
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
@@ -17,16 +18,19 @@ interface MediaProcessingStrategy {
   /**
    * Determine the MIME type of the media file.
    */
-  getMimeType(): string;
+  getMimeType(fileType: string): string;
 }
-export class MediaProcessor {
 
-  constructor(public instagramMedia: any){}
 
-  protected process(): Promise<ProcessedPost> {
+export class InstagramMediaProcessor implements MediaProcessingStrategy {
+
+  constructor(public instagramPosts: InstagramExportedPost[]){}
+
+  public process(): Promise<ProcessedPost> {
     throw Error('Unimplemented strategy pattern.');
   }
-  public static getMimeType(fileType: string): string {
+
+  public getMimeType(fileType: string): string {
     switch (fileType.toLowerCase()) {
       // TODO move image formats into a the image layer.
       case "heic":
@@ -53,12 +57,12 @@ export class MediaProcessor {
  * @returns 
  */
 export async function processMedia(
-  media: any,
+  media: Media,
   archiveFolder: string
 ): Promise<MediaProcessResult> {
   const mediaDate = new Date(media.creation_timestamp * 1000);
   const fileType = media.uri.substring(media.uri.lastIndexOf(".") + 1);
-  const mimeType = MediaProcessor.getMimeType(fileType);
+  const mimeType = new InstagramMediaProcessor({}).getMimeType(fileType);
   const mediaFilename = `${archiveFolder}/${media.uri}`;
 
   let mediaBuffer;
@@ -73,10 +77,11 @@ export async function processMedia(
   }
 
   let mediaText = media.title ?? "";
-  if (media.media_metadata?.photo_metadata?.exif_data?.length > 0) {
+  if (media.media_metadata?.photo_metadata?.exif_data && media.media_metadata.photo_metadata.exif_data.length > 0) {
     const location = media.media_metadata.photo_metadata.exif_data[0];
-    if (location.latitude > 0) {
-      mediaText += `\nPhoto taken at these geographical coordinates: geo:${location.latitude},${location.longitude}`;
+    const { latitude, longitude } = location || {};
+    if (latitude && latitude > 0) {
+      mediaText += `\nPhoto taken at these geographical coordinates: geo:${latitude},${longitude}`;
     }
   }
 
