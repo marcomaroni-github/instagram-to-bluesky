@@ -1,7 +1,6 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffprobe from '@ffprobe-installer/ffprobe';
 import { logger } from '@logger/logger.js'
-import { BlueskyClient } from '@bluesky/bluesky.js';
 import { BlobRef } from '@atproto/api';
 
 // Configure ffmpeg to use ffprobe
@@ -83,15 +82,6 @@ export class VideoUploadDataImpl implements VideoUploadData {
   }
 }
 
-// TODO not setting a blobref screams the wrong place blobref is for bluesky not video processing.
-export async function prepareVideoUpload(filePath: string, buffer: Buffer): Promise<VideoUploadData> {
-  if (!validateVideo(buffer)) {
-    throw new Error('Video validation failed');
-  }
-
-  return VideoUploadDataImpl.createDefault(buffer);
-}
-
 export interface VideoEmbedOutput {
   $type: "app.bsky.embed.video";
   video: BlobRef;
@@ -119,19 +109,6 @@ export class VideoEmbedOutputImpl implements VideoEmbedOutput {
     this.aspectRatio = dimensions;
   }
 }
-
-/**
- * Creates the video embed structure for Bluesky post
- */
-export function createVideoEmbed(videoData: VideoUploadData): VideoEmbedOutput {
-  return new VideoEmbedOutputImpl(
-    videoData.ref!,
-    videoData.mimeType,
-    videoData.size,
-    videoData.dimensions
-  );
-}
-
 
 /**
  * 
@@ -173,54 +150,3 @@ export function createVideoEmbed(videoData: VideoUploadData): VideoEmbedOutput {
       }
  * 
  */
-
-
-/**
- * Processes a video file for posting to Bluesky, including metadata preparation and upload.
- * 
- * @param filePath - The path to the video file being processed
- * @param buffer - The video file contents as a Buffer
- * @param bluesky - BlueskyClient instance for uploading, or null if not uploading
- * @param simulate - If true, skips the actual upload to Bluesky
- * 
- * @returns A video embed structure ready for posting to Bluesky
- * @throws {Error} If video buffer is undefined or upload fails
- */
-export async function processVideoPost(
-  filePath: string,
-  buffer: Buffer,
-  bluesky: BlueskyClient | null,
-  simulate: boolean
-) {
-  try {
-    if (!buffer) {
-      throw new Error("Video buffer is undefined");
-    }
-
-    logger.debug({
-      message: "Processing video",
-      fileSize: buffer.length,
-      filePath,
-    });
-
-    // Prepare video metadata
-    const videoData = await prepareVideoUpload(filePath, buffer);
-
-    // Upload video to get CID
-    if (!simulate && bluesky) {
-      const blob = await bluesky.uploadVideo(buffer);
-      if (!blob?.ref) {
-        throw new Error("Failed to get video upload reference");
-      }
-      videoData.ref = blob;
-    }
-
-    // Create video embed structure
-    const videoEmbed = createVideoEmbed(videoData);
-
-    return videoEmbed;
-  } catch (error) {
-    logger.error("Failed to process video:", error);
-    throw error;
-  }
-}
