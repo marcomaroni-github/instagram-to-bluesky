@@ -5,37 +5,11 @@ import * as process from 'process';
 
 import { BlueskyClient } from './bluesky/bluesky.js';
 import { logger } from './logger/logger.js';
-import { processPost } from './media/media.js';
+import { decodeUTF8, processPost } from './media/media.js';
 
 dotenv.config();
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
-
-function decodeUTF8(data: any): any {
-  try {
-    if (typeof data === "string") {
-      const utf8 = new TextEncoder().encode(data);
-      return new TextDecoder("utf-8").decode(utf8);
-    }
-
-    if (Array.isArray(data)) {
-      return data.map(decodeUTF8);
-    }
-
-    if (typeof data === "object" && data !== null) {
-      const obj: { [key: string]: any } = {};
-      Object.entries(data).forEach(([key, value]) => {
-        obj[key] = decodeUTF8(value);
-      });
-      return obj;
-    }
-
-    return data;
-  } catch (error) {
-    logger.error({ message: "Error decoding UTF-8 data", error });
-    return data;
-  }
-}
 
 /**
  * Returns the absolute path to the archive folder
@@ -53,7 +27,6 @@ export function getArchiveFolder(
   if (TEST_IMAGE_MODE) return path.join(rootDir, "transfer/test_images");
   return process.env.ARCHIVE_FOLDER!;
 }
-
 
 /**
  * Validates test mode configuration
@@ -82,6 +55,9 @@ export function calculateEstimatedTime(importedMedia: number): string {
   return formatDuration(estimatedMilliseconds);
 }
 
+/**
+ * 
+ */
 export async function main() {
   // Set environment variables within function scope, allows mocked unit testing.
   const SIMULATE = process.env.SIMULATE === "1";
@@ -98,6 +74,7 @@ export async function main() {
     : undefined;
   const archivalFolder = getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
 
+  // Log begining of import with a start date time to calculate the total time.
   const importStart: Date = new Date();
   logger.info(`Import started at ${importStart.toISOString()}`);
   logger.info({
@@ -108,6 +85,7 @@ export async function main() {
     SIMULATE,
   });
 
+  // Setup BlueSky Client only used if SIMULATE is not configured.
   let bluesky: BlueskyClient | null = null;
 
   if (!SIMULATE) {
@@ -121,30 +99,33 @@ export async function main() {
     logger.warn("--- SIMULATE mode is enabled, no posts will be imported ---");
   }
 
+  // Decide where to fetch post data to process from.
   let postsJsonPath: string;
   if (TEST_VIDEO_MODE || TEST_IMAGE_MODE) {
+    // Use test post(s) to validate functionality with a test account.
     postsJsonPath = path.join(archivalFolder, "posts.json");
     logger.info(
       `--- TEST mode is enabled, using content from ${archivalFolder} ---`
     );
   } else {
+    // Use real instagram exported posts.
     postsJsonPath = path.join(
       archivalFolder,
       "your_instagram_activity/content/posts_1.json"
     );
   }
 
-  const fInstaPosts = FS.readFileSync(postsJsonPath);
+  // Read instagram posts JSON file as raw buffer data.
+  const fInstaPosts: Buffer = FS.readFileSync(postsJsonPath);
 
+  // Decode raw JSON data into an object.
   const instaPosts = decodeUTF8(JSON.parse(fInstaPosts.toString()));
 
+  // Initialize counters for posts and media imports.
   let importedPosts = 0;
   let importedMedia = 0;
 
-  if (TEST_VIDEO_MODE || TEST_IMAGE_MODE) {
-    logger.info("--- TEST mode is enabled, skipping video processing ---");
-  }
-
+  // Sort instagram posts by creation timestamp
   if (instaPosts && instaPosts.length > 0) {
     const sortedPosts = instaPosts.sort((a, b) => {
       const ad = new Date(a.media[0].creation_timestamp * 1000).getTime();
@@ -152,6 +133,7 @@ export async function main() {
       return ad - bd;
     });
 
+    // Check each posts/media's creation timestamp
     for (const post of sortedPosts) {
       let checkDate: Date | undefined;
       if (post.creation_timestamp) {
@@ -162,11 +144,13 @@ export async function main() {
         checkDate = undefined;
       }
 
+      // Skip posts without a creation date.
       if (!checkDate) {
         logger.warn("Skipping post - No date");
         continue;
       }
 
+      // Validate the creation date is after the minimum date config.
       if (MIN_DATE && checkDate && checkDate < MIN_DATE) {
         logger.warn(
           `Skipping post - Before MIN_DATE: [${checkDate.toUTCString()}]`
@@ -174,6 +158,7 @@ export async function main() {
         continue;
       }
 
+      // Validate the creation date is before the max date config.
       if (MAX_DATE && checkDate > MAX_DATE) {
         logger.warn(
           `Skipping post - After MAX_DATE [${checkDate.toUTCString()}]`
@@ -181,28 +166,23 @@ export async function main() {
         break;
       }
 
+
+      // TODO use media processor instead.
       const {
         postDate,
         postText,
         mediaCount,
         embeddedMedia: initialMedia,
-      } = await processPost(post, archivalFolder,
-        bluesky,
-        SIMULATE);
+      } = await processPost(post, archivalFolder);
       let embeddedMedia: any = initialMedia;
-
-      logger.debug({
-        message: "Processing post media",
-        mediaType: post.media[0].type,
-        initialMediaPresent: !!initialMedia,
-        mediaCount,
-      });
       
+      // If the post does not have a creation date after processing skip.
       if (!postDate) {
         logger.warn("Skipping post - Invalid date");
         continue;
       }
 
+      // If we are not simulating migration we create the post with the embedded media.
       if (!SIMULATE && bluesky) {
         await new Promise((resolve) =>
           setTimeout(resolve, API_RATE_LIMIT_DELAY)
@@ -230,9 +210,11 @@ export async function main() {
           // Continue with the next post even if this one failed
         }
       } else {
+        // We are simulating the migration, incrementing posts to inform the user.
         importedPosts++;
       }
 
+      // Log the migrated instragram post.
       logger.debug({
         IG_Post: {
           message: "Instagram Post",
@@ -243,19 +225,23 @@ export async function main() {
         },
       });
 
+      // Add the total media posted to inform the user.
       importedMedia += mediaCount;
     }
   }
-
+  
+  // If we are simulating the migration we want to inform the user the estimated time it may take.
   if (SIMULATE) {
     const estimatedTime = calculateEstimatedTime(importedMedia);
     logger.info(`Estimated time for real import: ${estimatedTime}`);
   }
 
+  // Log the results for the user, end time, and the number of posts and media migrated.
   const importEnd: Date = new Date();
   logger.info(
     `Import finished at ${importEnd.toISOString()}, imported ${importedPosts} posts with ${importedMedia} media`
   );
+  // Inform the user the total time it took to migrate.
   const totalTime = importEnd.getTime() - importStart.getTime();
   logger.info(`Total import time: ${formatDuration(totalTime)}`);
 }
