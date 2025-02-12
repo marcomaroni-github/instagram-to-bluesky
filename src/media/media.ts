@@ -1,32 +1,41 @@
 import FS from "fs";
 
-import {
-  BlueskyClient,
-} from "@bluesky/bluesky.js";
 import { logger } from "@logger/logger.js";
-import { validateVideo, processVideoPost } from "@video/video.js";
+import { validateVideo } from "@video/video.js";
 import { ProcessedPost } from "./ProcessedPost.js";
 import { MediaProcessResult, MediaProcessResultImpl } from "./MediaProcessResult.js";
-
+// TODO make a stratgey pattern for video versus image
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
 
-export function getMimeType(fileType: string): string {
-  switch (fileType.toLowerCase()) {
-    case "heic":
-      return "image/heic";
-    case "webp":
-      return "image/webp";
-    case "jpg":
-      return "image/jpeg";
-    case "mp4":
-      return "video/mp4";
-    case "mov":
-      return "video/quicktime";
-    default:
-      logger.warn("Unsupported file type " + fileType);
-      return "";
+interface MediaProcessingStrategy {
+  process(): Promise<ProcessedPost>;
+  getMimeType(): string;
+}
+export class MediaProcessor {
+  instagramMedia: any;
+
+  protected process(): Promise<ProcessedPost> {
+    throw Error('Unimplemented strategy pattern.');
+  }
+  protected getMimeType(fileType: string): string {
+    switch (fileType.toLowerCase()) {
+      // TODO move image formats into a the image layer.
+      case "heic":
+        return "image/heic";
+      case "webp":
+        return "image/webp";
+      case "jpg":
+        return "image/jpeg";
+      // TODO move video formats into the video layer.
+      case "mp4":
+        return "video/mp4";
+      case "mov":
+        return "video/quicktime";
+      default:
+        throw Error(`Unsupported file type: ${fileType}`);
+    }
   }
 }
 
@@ -88,12 +97,10 @@ export async function processMedia(
  * @param bluesky 
  * @param simulate 
  * @returns 
- */
+ */ 
 export async function processPost(
   post: any,
-  archiveFolder: string,
-  bluesky: BlueskyClient | null,
-  simulate: boolean
+  archiveFolder: string
 ): Promise<ProcessedPost> {
   let postDate = post.creation_timestamp
     ? new Date(post.creation_timestamp * 1000)
@@ -203,3 +210,74 @@ export async function processPost(
 }
 
 
+
+/**
+ * Processes a video file for posting to Bluesky.
+ * 
+ * @param filePath - The path to the video file being processed
+ * @param buffer - The video file contents as a Buffer
+ * @param bluesky - BlueskyClient instance for uploading, or null if not uploading
+ * @param simulate - If true, skips the actual upload to Bluesky
+ * 
+ * @returns A video embed structure ready for posting to Bluesky
+ * @throws {Error} If video buffer is undefined or upload fails
+ */
+export async function processVideoPost(
+  filePath: string,
+  buffer: Buffer,
+  bluesky: BlueskyClient | null,
+  simulate: boolean
+): ProcessedPost {
+  try {
+    if (!buffer) {
+      throw new Error("Video buffer is undefined");
+    }
+    logger.debug({
+      message: "Processing video",
+      fileSize: buffer.length,
+      filePath,
+    });
+
+    // 
+    if (!validateVideo(buffer)) {
+      throw new Error('Video validation failed');
+    }
+
+
+
+  } catch (error) {
+    logger.error("Failed to process video:", error);
+    throw error;
+  }
+}
+
+/**
+ * Decode JSON Data into an Object.
+ * @param data
+ * @returns 
+ */
+export function decodeUTF8(data: any): any {
+  try {
+    if (typeof data === "string") {
+      const utf8 = new TextEncoder().encode(data);
+      return new TextDecoder("utf-8").decode(utf8);
+    }
+
+    if (Array.isArray(data)) {
+      return data.map(decodeUTF8);
+    }
+
+    if (typeof data === "object" && data !== null) {
+      const obj: { [key: string]: any } = {};
+      Object.entries(data).forEach(([key, value]) => {
+        obj[key] = decodeUTF8(value);
+      });
+      return obj;
+    }
+
+    return data;
+  } catch (error) {
+    logger.error({ message: "Error decoding UTF-8 data", error });
+    return data;
+  }
+}
