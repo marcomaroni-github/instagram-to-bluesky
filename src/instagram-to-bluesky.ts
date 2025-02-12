@@ -6,6 +6,7 @@ import * as process from 'process';
 import { BlueskyClient } from './bluesky/bluesky.js';
 import { logger } from './logger/logger.js';
 import { decodeUTF8, processPost } from './media/media.js';
+import { InstagramExportedPost } from './media/InstagramExportedPost.js';
 
 dotenv.config();
 
@@ -119,7 +120,7 @@ export async function main() {
   const fInstaPosts: Buffer = FS.readFileSync(postsJsonPath);
 
   // Decode raw JSON data into an object.
-  const instaPosts = decodeUTF8(JSON.parse(fInstaPosts.toString()));
+  const instaPosts: InstagramExportedPost[] = decodeUTF8(JSON.parse(fInstaPosts.toString()));
 
   // Initialize counters for posts and media imports.
   let importedPosts = 0;
@@ -127,9 +128,10 @@ export async function main() {
 
   // Sort instagram posts by creation timestamp
   if (instaPosts && instaPosts.length > 0) {
-    const sortedPosts = instaPosts.sort((a, b) => {
-      const ad = new Date(a.media[0].creation_timestamp * 1000).getTime();
-      const bd = new Date(b.media[0].creation_timestamp * 1000).getTime();
+    const sortedPosts = instaPosts.toSorted((a, b) => {
+      // Get the first posts media and compare timestamps.
+      const ad = a.media[0].creation_timestamp;
+      const bd = b.media[0].creation_timestamp;
       return ad - bd;
     });
 
@@ -150,7 +152,7 @@ export async function main() {
         continue;
       }
 
-      // Validate the creation date is after the minimum date config.
+      // If MIN_DATE configured validate the creation date is after the minimum date config.
       if (MIN_DATE && checkDate && checkDate < MIN_DATE) {
         logger.warn(
           `Skipping post - Before MIN_DATE: [${checkDate.toUTCString()}]`
@@ -158,7 +160,7 @@ export async function main() {
         continue;
       }
 
-      // Validate the creation date is before the max date config.
+      // If MAX_DATE configured validate the creation date is before the max date config.
       if (MAX_DATE && checkDate > MAX_DATE) {
         logger.warn(
           `Skipping post - After MAX_DATE [${checkDate.toUTCString()}]`
