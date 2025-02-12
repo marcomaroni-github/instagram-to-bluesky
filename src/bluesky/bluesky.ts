@@ -1,21 +1,15 @@
 import {
   AtpAgent,
   RichText,
-  BlobRef,
-  AppBskyEmbedVideo,
-  AppBskyEmbedImages,
+  BlobRef
 } from "@atproto/api";
 
-import { logger } from "@logger/logger.js";
+import { logger } from "@logger/logger";
 
 import {
-  ImageEmbed,
   EmbeddedMedia,
-  ImageEmbedImpl,
-  VideoEmbedImpl,
-  ImagesEmbedImpl,
   PostRecordImpl
-} from "./types/index.js";
+} from "./types";
 
 
 export class BlueskyClient {

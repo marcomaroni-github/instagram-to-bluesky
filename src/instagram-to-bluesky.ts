@@ -138,7 +138,7 @@ export async function main() {
 
   // Sort instagram posts by creation timestamp
   if (instaPosts && instaPosts.length > 0) {
-    const sortedPosts = instaPosts.toSorted((a, b) => {
+    const sortedPosts = instaPosts.sort((a, b) => {
       // Get the first posts media and compare timestamps.
       const ad = a.media[0].creation_timestamp;
       const bd = b.media[0].creation_timestamp;
