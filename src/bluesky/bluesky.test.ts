@@ -31,13 +31,21 @@ describe('BlueskyClient', () => {
   let videoBuffer: Buffer;
   let imageBuffer: Buffer;
   let mockAgent: any;
+  const mockBlobRefUpload = (buffer, { encoding }) => ({ 
+    data: { 
+      blob: {
+        ref: { link: 'test-blob-ref' },
+        mimeType: encoding,
+        size: 1000
+      }
+    }
+  });
 
   beforeEach(() => {
+    jest.clearAllMocks();
     client = new BlueskyClient('test-user', 'test-pass');
     mockAgent = jest.requireMock('@atproto/api').AtpAgent.mock.results[0].value;
-    mockAgent.uploadBlob.mockResolvedValue({ 
-      data: { blob: { $type: 'blob', ref: 'test-blob-ref' } }
-    });
+    mockAgent.uploadBlob = jest.fn().mockImplementation(mockBlobRefUpload);
   });
 
   beforeAll(async () => {
@@ -59,23 +67,29 @@ describe('BlueskyClient', () => {
     const blob = await client.uploadMedia(imageBuffer, 'image/jpeg');
 
     expect(blob).toBeDefined();
-    expect(blob.ref).toBe('test-blob-ref');
+    expect(mockAgent.uploadBlob).toHaveBeenCalledTimes(1);
+    expect(mockAgent.uploadBlob).toHaveBeenCalledWith(imageBuffer, { encoding: 'image/jpeg' });
   });
 
   test('should upload video successfully', async () => {
     const blob = await client.uploadMedia(videoBuffer, 'video/mp4');
 
     expect(blob).toBeDefined();
-    expect(blob.ref).toBe('test-blob-ref');
+    expect(mockAgent.uploadBlob).toHaveBeenCalledTimes(1);
+    expect(mockAgent.uploadBlob).toHaveBeenCalledWith(videoBuffer, { encoding: 'video/mp4' });
   });
 
   test('should handle media upload failure', async () => {
     mockAgent.uploadBlob.mockRejectedValueOnce(new Error('Upload failed'));
     await expect(client.uploadMedia(imageBuffer, 'image/jpeg')).rejects.toThrow('Upload failed');
+    expect(mockAgent.uploadBlob).toHaveBeenCalledTimes(1);
+    expect(mockAgent.uploadBlob).toHaveBeenCalledWith(imageBuffer, { encoding: 'image/jpeg' });
   });
 
   test('should create video post successfully', async () => {
     const blob = await client.uploadMedia(videoBuffer, 'video/mp4');
+    expect(mockAgent.uploadBlob).toHaveBeenCalledTimes(1);
+    expect(mockAgent.uploadBlob).toHaveBeenCalledWith(videoBuffer, { encoding: 'video/mp4' });
 
     const videoEmbed = new VideoEmbedImpl(
       'test video',
