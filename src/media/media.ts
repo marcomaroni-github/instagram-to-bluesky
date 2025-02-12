@@ -62,13 +62,16 @@ interface VideoMediaProcessingStrategy
   extends ProcessStrategy<MediaProcessResult>,
     MIMEType {}
 
-export class InstagramMediaProcessor
-  implements InstagramPostProcessingStrategy
-{
+export class InstagramMediaProcessor implements InstagramPostProcessingStrategy {
+  readonly mediaProcessorFactory: MediaProcessorFactory;
+
   constructor(
     public instagramPosts: InstagramExportedPost[],
-    public archiveFolder: string
-  ) {}
+    public archiveFolder: string,
+    mediaProcessorFactory?: MediaProcessorFactory
+  ) {
+    this.mediaProcessorFactory = mediaProcessorFactory || new DefaultMediaProcessorFactory();
+  }
 
   /**
    * Processes Instagram posts and their associated media into a format
@@ -81,48 +84,27 @@ export class InstagramMediaProcessor
    * @returns {Promise<ProcessedPost[]>} A promise that resolves to an array of ProcessedPost objects.
    */
   public process(): Promise<ProcessedPost[]> {
-    // Array to hold promises for each processed post
     const processingPosts: Promise<ProcessedPost>[] = [];
     
-    // Iterate over each Instagram post
     for (const post of this.instagramPosts) {
-      // Create a new date object from the post's creation timestamp
       const postDate = new Date(post.creation_timestamp * 1000);
-      
-      // Initialize a new ProcessedPostImpl object with the post date and title
       const processingPost = new ProcessedPostImpl(postDate, post.title);
       
-      // Declare a promise to hold the processing result for the media
-      let processingMedia: Promise<ProcessedPost>;
+      // Get appropriate strategy from factory
+      const mediaProcessor = this.mediaProcessorFactory.createProcessor(
+        post.media,
+        this.archiveFolder
+      );
+      
+      // Process using the strategy
+      const processingMedia = mediaProcessor.process().then(processedMedia => {
+        processingPost.embeddedMedia = processedMedia;
+        return processingPost;
+      });
 
-      // Check if the post contains multiple media items (images)
-      if (Array.isArray(post.media)) {
-        // Create an image processor for the array of images
-        const imageProcessor = new InstagramImageProcessor(post.media, this.archiveFolder);
-        
-        // Process the images and update the processingPost with the results
-        const processingImages: Promise<MediaProcessResult[]> = imageProcessor.process();
-        processingMedia = processingImages.then((processedImages) => {
-          processingPost.embeddedMedia = processedImages; // Set the embedded media
-          return processingPost; // Return the processed post
-        });
-      } else {
-        // If the post contains a single video
-        const videoProcessor = new InstagramVideoProcessor(post.media as VideoMedia, this.archiveFolder);
-        
-        // Process the video and update the processingPost with the result
-        const processingVideo: Promise<MediaProcessResult> = videoProcessor.process();
-        processingMedia = processingVideo.then((processedVideo) => {
-          processingPost.embeddedMedia = processedVideo; // Set the embedded media
-          return processingPost; // Return the processed post
-        });
-      }
-
-      // Add the processing promise to the array
       processingPosts.push(processingMedia);
     }
 
-    // Wait for all processing promises to resolve and return the final array of processed posts
     return Promise.all(processingPosts);
   }
 }
@@ -298,4 +280,19 @@ export function getMediaBuffer(
   }
 
   return mediaBuffer;
+}
+
+// New factory interface
+interface MediaProcessorFactory {
+  createProcessor(media: Media | Media[], archiveFolder: string): ProcessStrategy<MediaProcessResult | MediaProcessResult[]>;
+}
+
+// Default factory implementation
+class DefaultMediaProcessorFactory implements MediaProcessorFactory {
+  createProcessor(media: Media | Media[], archiveFolder: string): ProcessStrategy<MediaProcessResult | MediaProcessResult[]> {
+    if (Array.isArray(media)) {
+      return new InstagramImageProcessor(media, archiveFolder);
+    }
+    return new InstagramVideoProcessor(media as VideoMedia, archiveFolder);
+  }
 }
