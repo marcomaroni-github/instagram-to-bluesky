@@ -70,32 +70,60 @@ export class InstagramMediaProcessor
     public archiveFolder: string
   ) {}
 
+  /**
+   * Processes Instagram posts and their associated media into a format
+   * that can be easily mapped to Bluesky's requirements.
+   * 
+   * This method iterates over each Instagram post, processes the media 
+   * (either images or videos), and returns a Promise that resolves to 
+   * an array of ProcessedPost objects once all media processing is complete.
+   * 
+   * @returns {Promise<ProcessedPost[]>} A promise that resolves to an array of ProcessedPost objects.
+   */
   public process(): Promise<ProcessedPost[]> {
-    const processingPosts: ProcessedPost[] = [];
-    for(const post of this.instagramPosts){
+    // Array to hold promises for each processed post
+    const processingPosts: Promise<ProcessedPost>[] = [];
+    
+    // Iterate over each Instagram post
+    for (const post of this.instagramPosts) {
+      // Create a new date object from the post's creation timestamp
       const postDate = new Date(post.creation_timestamp * 1000);
+      
+      // Initialize a new ProcessedPostImpl object with the post date and title
       const processingPost = new ProcessedPostImpl(postDate, post.title);
-      let processingMedia: Promise<MediaProcessResult | MediaProcessResult[]>;
-      // If its an array we know we have many images.
-      // Does not support images and videos in the same post at this time.
-      if(Array.isArray(post.media)) {
-        const imageProcessor =  new InstagramImageProcessor(post.media, this.archiveFolder);
+      
+      // Declare a promise to hold the processing result for the media
+      let processingMedia: Promise<ProcessedPost>;
+
+      // Check if the post contains multiple media items (images)
+      if (Array.isArray(post.media)) {
+        // Create an image processor for the array of images
+        const imageProcessor = new InstagramImageProcessor(post.media, this.archiveFolder);
+        
+        // Process the images and update the processingPost with the results
         const processingImages: Promise<MediaProcessResult[]> = imageProcessor.process();
-        processingImages.then((processedImages) => processingPost.embeddedMedia = processedImages);
-        processingMedia = processingImages;
+        processingMedia = processingImages.then((processedImages) => {
+          processingPost.embeddedMedia = processedImages; // Set the embedded media
+          return processingPost; // Return the processed post
+        });
       } else {
-        // If its not an array we know we have a single video post
-        // A strong assumption that should be changed once both medias are handled the same.
+        // If the post contains a single video
         const videoProcessor = new InstagramVideoProcessor(post.media as VideoMedia, this.archiveFolder);
+        
+        // Process the video and update the processingPost with the result
         const processingVideo: Promise<MediaProcessResult> = videoProcessor.process();
-        processingVideo.then((processedVideo)=> processingPost.embeddedMedia = processedVideo);
-        processingMedia = processingVideo;
+        processingMedia = processingVideo.then((processedVideo) => {
+          processingPost.embeddedMedia = processedVideo; // Set the embedded media
+          return processingPost; // Return the processed post
+        });
       }
 
-      processingPosts.push(processingPost);
+      // Add the processing promise to the array
+      processingPosts.push(processingMedia);
     }
 
-    return Promise.resolve(processingPosts);
+    // Wait for all processing promises to resolve and return the final array of processed posts
+    return Promise.all(processingPosts);
   }
 }
 
