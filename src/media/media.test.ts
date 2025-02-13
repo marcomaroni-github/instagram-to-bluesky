@@ -83,6 +83,52 @@ describe("Instagram Media Processing", () => {
       expect(result[0].postText).toBe("Test Video Post");
       expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
     });
+
+    test("should truncate post title when it exceeds limit", async () => {
+      const longTitle = "A".repeat(400); // Create a title longer than POST_TEXT_LIMIT (300)
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1234567890,
+        title: longTitle,
+        media: [
+          {
+            uri: "photo1.jpg",
+            title: "Image 1",
+            creation_timestamp: 1234567890,
+            media_metadata: {},
+            cross_post_source: { source_app: "Instagram" },
+            backup_uri: "backup1.jpg",
+          },
+        ] as ImageMedia[],
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].postText.length).toBe(303); // 300 chars + "..."
+      expect(result[0].postText.endsWith("...")).toBe(true);
+    });
+
+    test("should limit media to maximum allowed images", async () => {
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1234567890,
+        title: "Test Post with Many Images",
+        media: Array(6).fill(null).map((_, index) => ({
+          uri: `photo${index + 1}.jpg`,
+          title: `Image ${index + 1}`,
+          creation_timestamp: 1234567890,
+          media_metadata: {},
+          cross_post_source: { source_app: "Instagram" },
+          backup_uri: `backup${index + 1}.jpg`,
+        })) as ImageMedia[], // Create 6 images, more than MAX_IMAGES_PER_POST (4)
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].embeddedMedia).toHaveLength(4); // Should be limited to 4 images
+    });
   });
 
   describe("InstagramImageProcessor", () => {
@@ -130,6 +176,41 @@ describe("Instagram Media Processing", () => {
       expect(result).toHaveLength(1);
       expect(result[0].mimeType).toBe("");
     });
+
+    test("should truncate image caption when it exceeds limit", async () => {
+      const longCaption = "B".repeat(400); // Create a caption longer than POST_TEXT_LIMIT (300)
+      const mockImages: ImageMedia[] = [{
+        uri: "photo1.jpg",
+        title: longCaption,
+        creation_timestamp: 1234567890,
+        media_metadata: {},
+        cross_post_source: { source_app: "Instagram" },
+        backup_uri: "backup1.jpg",
+      }];
+
+      const processor = new InstagramImageProcessor(mockImages, "/test/archive");
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].mediaText.length).toBe(303); // 300 chars + "..."
+      expect(result[0].mediaText.endsWith("...")).toBe(true);
+    });
+
+    test("should limit to maximum allowed images when processing multiple images", async () => {
+      const mockImages: ImageMedia[] = Array(6).fill(null).map((_, index) => ({
+        uri: `photo${index + 1}.jpg`,
+        title: `Image ${index + 1}`,
+        creation_timestamp: 1234567890,
+        media_metadata: {},
+        cross_post_source: { source_app: "Instagram" },
+        backup_uri: `backup${index + 1}.jpg`,
+      })); // Create 6 images, more than MAX_IMAGES_PER_POST (4)
+
+      const processor = new InstagramImageProcessor(mockImages, "/test/archive");
+      const result = await processor.process();
+
+      expect(result).toHaveLength(4); // Should be limited to 4 images
+    });
   });
 
   describe("InstagramVideoProcessor", () => {
@@ -170,6 +251,27 @@ describe("Instagram Media Processing", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].mimeType).toBe("");
+    });
+
+    test("should truncate video title when it exceeds limit", async () => {
+      const longTitle = "C".repeat(400); // Create a title longer than POST_TEXT_LIMIT (300)
+      const mockVideo: VideoMedia = {
+        uri: "video.mp4",
+        title: longTitle,
+        creation_timestamp: 1234567890,
+        media_metadata: {},
+        cross_post_source: { source_app: "Instagram" },
+        backup_uri: "backup_video.mp4",
+        dubbing_info: [],
+        media_variants: [],
+      };
+
+      const processor = new InstagramVideoProcessor([mockVideo], "/test/archive");
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].mediaText.length).toBe(303); // 300 chars + "..."
+      expect(result[0].mediaText.endsWith("...")).toBe(true);
     });
   });
 

@@ -89,11 +89,26 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
     for (const post of this.instagramPosts) {
       const timestamp = post.creation_timestamp || post.media[0].creation_timestamp;
       const postDate = new Date(timestamp * 1000);
-      const processingPost = new ProcessedPostImpl(postDate, post.title);
+      
+      // Truncate post title if it exceeds the limit
+      let title = post.title;
+      if (title && title.length > POST_TEXT_LIMIT) {
+        logger.info(`Truncating post title from ${title.length} to ${POST_TEXT_LIMIT} characters`);
+        title = title.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
+      }
+        
+      const processingPost = new ProcessedPostImpl(postDate, title);
+      
+      // Limit media to MAX_IMAGES_PER_POST
+      let limitedMedia = post.media;
+      if (Array.isArray(post.media) && post.media.length > MAX_IMAGES_PER_POST) {
+        logger.info(`Limiting post media from ${post.media.length} to ${MAX_IMAGES_PER_POST} items`);
+        limitedMedia = post.media.slice(0, MAX_IMAGES_PER_POST);
+      }
       
       // Get appropriate strategy from factory
       const mediaProcessor = this.mediaProcessorFactory.createProcessor(
-        post.media,
+        limitedMedia,
         this.archiveFolder
       );
       
@@ -119,7 +134,14 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
     const processingResults: Promise<MediaProcessResult>[] = [];
     // Iterate over each image in the post,
     // adding the process to the promise array.
-    for (const media of this.instagramImages) {
+    // Limit to MAX_IMAGES_PER_POST
+    let limitedImages = this.instagramImages;
+    if (this.instagramImages.length > MAX_IMAGES_PER_POST) {
+      logger.info(`Limiting images from ${this.instagramImages.length} to ${MAX_IMAGES_PER_POST}`);
+      limitedImages = this.instagramImages.slice(0, MAX_IMAGES_PER_POST);
+    }
+    
+    for (const media of limitedImages) {
       const processedMedia = this.processMedia(media, this.archiveFolder);
       processingResults.push(processedMedia);
     }
@@ -158,8 +180,11 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
       }
     }
 
-    const truncatedText =
-      mediaText.length > 100 ? mediaText.substring(0, 100) + "..." : mediaText;
+    let truncatedText = mediaText;
+    if (mediaText.length > POST_TEXT_LIMIT) {
+      logger.info(`Truncating image caption from ${mediaText.length} to ${POST_TEXT_LIMIT} characters`);
+      truncatedText = mediaText.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
+    }
 
     return new ImageMediaProcessResultImpl(
       truncatedText,
@@ -214,7 +239,13 @@ export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
       throw Error('Video too large.')
     }
     
-    return Promise.resolve(new VideoMediaProcessResultImpl(media.title, mimeType, mediaBuffer!));
+    let title = media.title;
+    if (title && title.length > POST_TEXT_LIMIT) {
+      logger.info(`Truncating video title from ${title.length} to ${POST_TEXT_LIMIT} characters`);
+      title = title.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
+    }
+    
+    return Promise.resolve(new VideoMediaProcessResultImpl(title, mimeType, mediaBuffer!));
   }
 }
 
