@@ -1,5 +1,3 @@
-import { BlobRef } from '@atproto/api';
-
 import fs from 'fs';
 
 import { BlueskyClient } from './bluesky';
@@ -93,9 +91,7 @@ describe('BlueskyClient', () => {
 
     const videoEmbed = new VideoEmbedImpl(
       'test video',
-      videoBuffer,
       'video/mp4',
-      1000,
       blob
     );
 
