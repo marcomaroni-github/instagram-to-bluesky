@@ -1,6 +1,6 @@
 import fs from "fs";
 
-import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor } from "./media";
+import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor, decodeUTF8 } from "./media";
 import { InstagramExportedPost, VideoMedia, ImageMedia } from "./InstagramExportedPost";
 
 // Mock the file system
@@ -348,5 +348,13 @@ describe("Instagram Media Processing", () => {
       expect(result[0].embeddedMedia).toBeDefined();
       expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
     });
+  });
+});
+
+describe("decodeUTF8", () => {
+  test("should decode Instagram Unicode escape sequences", () => {
+    const input = "Basil, Eucalyptus, Thyme \u00f0\u009f\u0098\u008d\u00f0\u009f\u008c\u00b1";
+    const result = decodeUTF8(input);
+    expect(result).toBe("Basil, Eucalyptus, Thyme 😍🌱");
   });
 });
