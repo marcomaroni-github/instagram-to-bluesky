@@ -4,7 +4,7 @@ import { Media, VideoMedia } from "../InstagramExportedPost";
 import { MediaProcessResult } from "../MediaProcessResult";
 import { InstagramImageProcessor } from "./InstagramImageProcessor";
 import { InstagramVideoProcessor } from "./InstagramVideoProcessor";
-import { getVideoMimeType } from "../../video/video";
+import { getMimeType as getVideoMimeType } from "../../video/video";
 
 /**
  * Processor factory that handles images and video.
