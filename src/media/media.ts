@@ -210,7 +210,7 @@ export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
       );        
       processingResults.push(processingVideo);
     }
-    // Return all images being processed as a single promise.
+    // Return all video(s) being processed as a single promise.
     return Promise.all(processingResults);
   }
 
