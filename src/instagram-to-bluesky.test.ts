@@ -242,26 +242,6 @@ describe('Main App', () => {
 
     (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
     
-    jest.mocked(InstagramMediaProcessor).mockImplementation(() => ({
-      mediaProcessorFactory: {
-        createProcessor: () => ({
-          process: jest.fn().mockResolvedValue([{
-            mediaText: 'Test media',
-            mimeType: 'image/jpeg',
-            mediaBuffer: Buffer.from('test')
-          }])
-        })
-      },
-      instagramPosts: [],
-      archiveFolder: '',
-      process: jest.fn().mockResolvedValue([{
-        postDate: new Date(),
-        postText: 'Test post',
-        embeddedMedia: [],
-        mediaCount: 10 // 10 media items
-      }])
-    }));
-
     await main();
 
     expect(logger.info).toHaveBeenCalledWith(

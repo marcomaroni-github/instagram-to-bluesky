@@ -1,4 +1,4 @@
-import { VideoEmbed } from "./VideoEmbed.js";
-import { ImagesEmbed } from "./ImagesEmbed.js";
+import { VideoEmbed } from "./VideoEmbed";
+import { ImagesEmbed } from "./ImagesEmbed";
 
 export type EmbeddedMedia = VideoEmbed | ImagesEmbed; 

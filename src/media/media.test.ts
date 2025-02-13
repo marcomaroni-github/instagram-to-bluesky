@@ -18,11 +18,6 @@ jest.mock("../logger/logger", () => ({
   },
 }));
 
-// Mock the video validation
-jest.mock("../video/video", () => ({
-  validateVideo: jest.fn().mockReturnValue(false)
-}));
-
 describe("Instagram Media Processing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -69,7 +64,7 @@ describe("Instagram Media Processing", () => {
       const mockPost: InstagramExportedPost = {
         creation_timestamp: 1234567890,
         title: "Test Video Post",
-        media: {
+        media: [{
           uri: "video.mp4",
           title: "Test Video",
           creation_timestamp: 1234567890,
@@ -78,7 +73,7 @@ describe("Instagram Media Processing", () => {
           backup_uri: "backup_video.mp4",
           dubbing_info: [],
           media_variants: [],
-        } as VideoMedia,
+        } as VideoMedia],
       };
 
       const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
@@ -86,7 +81,7 @@ describe("Instagram Media Processing", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].postText).toBe("Test Video Post");
-      expect(Array.isArray(result[0].embeddedMedia)).toBe(false);
+      expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
     });
   });
 
@@ -130,8 +125,10 @@ describe("Instagram Media Processing", () => {
       }];
 
       const processor = new InstagramImageProcessor(mockImages, "/test/archive");
+      const result = await processor.process();
       
-      await expect(processor.process()).rejects.toThrow("Unsupported file type");
+      expect(result).toHaveLength(1);
+      expect(result[0].mimeType).toBe("");
     });
   });
 
@@ -148,11 +145,12 @@ describe("Instagram Media Processing", () => {
         media_variants: [],
       };
 
-      const processor = new InstagramVideoProcessor(mockVideo, "/test/archive");
+      const processor = new InstagramVideoProcessor([mockVideo], "/test/archive");
       const result = await processor.process();
 
-      expect(result.mimeType).toBe("video/mp4");
-      expect(result.mediaText).toBe("Test Video");
+      expect(result).toHaveLength(1);
+      expect(result[0].mimeType).toBe("video/mp4");
+      expect(result[0].mediaText).toBe("Test Video");
     });
 
     test("should handle unsupported video types", async () => {
@@ -167,24 +165,16 @@ describe("Instagram Media Processing", () => {
         media_variants: [],
       };
 
-      const processor = new InstagramVideoProcessor(mockVideo, "/test/archive");
-      
-      await expect(processor.process()).rejects.toThrow("Unsupported file type");
+      const processor = new InstagramVideoProcessor([mockVideo], "/test/archive");
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].mimeType).toBe("");
     });
   });
 
-  describe("Custom MediaProcessorFactory", () => {
-    test("should allow custom processor injection", async () => {
-      const mockFactory = {
-        createProcessor: jest.fn().mockImplementation((media) => ({
-          process: jest.fn().mockResolvedValue([{
-            mediaText: "Mock Result",
-            mimeType: "mock/type",
-            mediaBuffer: Buffer.from("test")
-          }])
-        }))
-      };
-
+  describe("MediaProcessorFactory", () => {
+    test("should use DefaultMediaProcessorFactory for image processing", async () => {
       const mockPost: InstagramExportedPost = {
         creation_timestamp: 1234567890,
         title: "Test Post",
@@ -200,12 +190,38 @@ describe("Instagram Media Processing", () => {
         ] as ImageMedia[],
       };
 
-      const processor = new InstagramMediaProcessor([mockPost], "/test/archive", mockFactory);
+      const processor = new InstagramMediaProcessor([mockPost], "/test/archive");
       const result = await processor.process();
 
-      expect(mockFactory.createProcessor).toHaveBeenCalled();
       expect(result).toHaveLength(1);
       expect(result[0].embeddedMedia).toBeDefined();
+      expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
+    });
+
+    test("should use DefaultMediaProcessorFactory for video processing", async () => {
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1234567890,
+        title: "Test Video Post",
+        media: [
+          {
+            uri: "test.mp4",
+            title: "Test Video",
+            creation_timestamp: 1234567890,
+            media_metadata: {},
+            cross_post_source: { source_app: "Instagram" },
+            backup_uri: "backup_test.mp4",
+            dubbing_info: [],
+            media_variants: [],
+          },
+        ] as VideoMedia[],
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], "/test/archive");
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].embeddedMedia).toBeDefined();
+      expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
     });
   });
 });

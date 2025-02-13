@@ -232,9 +232,7 @@ export async function main() {
               );
               uploadedMedia = new VideoEmbedImpl(
                 postText,
-                mediaBuffer!,
                 mimeType!,
-                mediaBuffer?.length,
                 blobRef,
                 { width: 640, height: 640 }
               );

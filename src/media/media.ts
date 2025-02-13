@@ -1,7 +1,7 @@
 import FS from "fs";
 
 import { logger } from "../logger/logger";
-import { validateVideo } from "../video/video";
+import { getMimeType as getVideoMimeType, validateVideo } from "../video/video";
 import { ProcessedPost, ProcessedPostImpl } from "./ProcessedPost";
 import {
   MediaProcessResult,
@@ -14,11 +14,11 @@ import {
   Media,
   VideoMedia,
 } from "./InstagramExportedPost";
+import { getImageMimeType } from "../image";
 // TODO make a stratgey pattern for video versus image
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
-const UNSUPPORTED_FILE_TYPE_ERROR = Error(`Unsupported file type`);
 
 /**
  * Strategy pattern interface to allow all medias and posts to share a common method of process.
@@ -59,7 +59,7 @@ interface ImageMediaProcessingStrategy
  * Processes single video post media into a normalized MediaProcessResult.
  */
 interface VideoMediaProcessingStrategy
-  extends ProcessStrategy<MediaProcessResult>,
+  extends ProcessStrategy<MediaProcessResult[]>,
     MIMEType {}
 
 export class InstagramMediaProcessor implements InstagramPostProcessingStrategy {
@@ -87,7 +87,8 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
     const processingPosts: Promise<ProcessedPost>[] = [];
     
     for (const post of this.instagramPosts) {
-      const postDate = new Date(post.creation_timestamp * 1000);
+      const timestamp = post.creation_timestamp || post.media[0].creation_timestamp;
+      const postDate = new Date(timestamp * 1000);
       const processingPost = new ProcessedPostImpl(postDate, post.title);
       
       // Get appropriate strategy from factory
@@ -128,17 +129,7 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
   }
 
   public getMimeType(fileType: string): string {
-    switch (fileType.toLowerCase()) {
-      case "heic":
-        return "image/heic";
-      case "webp":
-        return "image/webp";
-      case "jpg":
-        return "image/jpeg";
-      default:
-        logger.warn(`Unsupported File type ${fileType}`);
-        throw UNSUPPORTED_FILE_TYPE_ERROR;
-    }
+    return getImageMimeType(fileType);
   }
 
   /**
@@ -153,7 +144,6 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
   ): Promise<ImageMediaProcessResultImpl> {
     const fileType = media.uri.substring(media.uri.lastIndexOf(".") + 1);
     const mimeType = this.getMimeType(fileType);
-
     const mediaBuffer = getMediaBuffer(archiveFolder, media);
 
     let mediaText = media.title ?? "";
@@ -181,28 +171,26 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
 
 export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
   constructor(
-    public instagramVideo: VideoMedia,
+    public instagramVideos: VideoMedia[],
     public archiveFolder: string
   ) {}
-  process(): Promise<MediaProcessResult> {
-    const processingVideo = this.processVideoMedia(
-      this.instagramVideo,
-      this.archiveFolder
-    );
-
-    return processingVideo;
+  process(): Promise<MediaProcessResult[]> {
+    const processingResults: Promise<MediaProcessResult>[] = [];
+    // Iterate over each video in the post,
+    // adding the process to the promise array.
+    for (const media of this.instagramVideos) {
+      const processingVideo = this.processVideoMedia(
+        media,
+        this.archiveFolder
+      );        
+      processingResults.push(processingVideo);
+    }
+    // Return all images being processed as a single promise.
+    return Promise.all(processingResults);
   }
 
   public getMimeType(fileType: string): string {
-    switch (fileType.toLowerCase()) {
-      case "mp4":
-        return "video/mp4";
-      case "mov":
-        return "video/quicktime";
-      default:
-        logger.warn(`Unsupported File type ${fileType}`);
-        throw UNSUPPORTED_FILE_TYPE_ERROR;
-    }
+    return getVideoMimeType(fileType);
   }
 
   /**
@@ -222,11 +210,11 @@ export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
 
     const mediaBuffer = getMediaBuffer(archiveFolder, media);
 
-    if(validateVideo(mediaBuffer!)) {
+    if(!validateVideo(mediaBuffer!)) {
       throw Error('Video too large.')
     }
     
-    return new VideoMediaProcessResultImpl(media.title, mimeType, mediaBuffer!);
+    return Promise.resolve(new VideoMediaProcessResultImpl(media.title, mimeType, mediaBuffer!));
   }
 }
 
@@ -288,15 +276,34 @@ export function getMediaBuffer(
 
 // New factory interface
 interface MediaProcessorFactory {
-  createProcessor(media: Media | Media[], archiveFolder: string): ProcessStrategy<MediaProcessResult | MediaProcessResult[]>;
+  createProcessor(media: Media | Media[], archiveFolder: string): ProcessStrategy<MediaProcessResult[]>;
+  
+  /**
+   * returns if any of the media is a video.
+   * @param media 
+   */
+  hasVideo(media: Media[])
 }
 
-// Default factory implementation
+/**
+ * Processor factory that handles images and video.
+ */
 class DefaultMediaProcessorFactory implements MediaProcessorFactory {
-  createProcessor(media: Media | Media[], archiveFolder: string): ProcessStrategy<MediaProcessResult | MediaProcessResult[]> {
-    if (Array.isArray(media)) {
+  createProcessor(media: Media | Media[], archiveFolder: string): ProcessStrategy<MediaProcessResult[]> {
+    if (Array.isArray(media) && !this.hasVideo(media)) {
       return new InstagramImageProcessor(media, archiveFolder);
     }
-    return new InstagramVideoProcessor(media as VideoMedia, archiveFolder);
+    return new InstagramVideoProcessor(media as VideoMedia[], archiveFolder);
+  }
+
+  hasVideo(media: Media[]) {
+    let hasVideo = false;
+    for(const file of media) {
+      const fileType: string = file.uri.substring(file.uri.lastIndexOf(".") + 1);
+      const mimeType = getVideoMimeType(fileType);
+      hasVideo = mimeType.includes('video/');
+    }
+
+    return hasVideo;
   }
 }

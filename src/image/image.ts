@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import byteSize from "byte-size";
-import { logger } from "@logger/logger.js";
+import { logger } from "../logger/logger";
 
 /**
  * Image lexicon maxSize 1mb

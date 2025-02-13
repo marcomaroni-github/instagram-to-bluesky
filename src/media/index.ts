@@ -1,3 +1,3 @@
-export * from './MediaProcessResult.js';
-export * from './ProcessedPost.js';
-export * from './media.js';
+export * from './MediaProcessResult';
+export * from './ProcessedPost';
+export * from './media';

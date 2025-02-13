@@ -1,4 +1,4 @@
-import { main } from "./instagram-to-bluesky.js";
+import { main } from "./instagram-to-bluesky";
 
 (async () => {
     await main();

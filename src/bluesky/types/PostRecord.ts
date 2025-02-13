@@ -1,5 +1,5 @@
 import { AppBskyFeedPost, Facet } from "@atproto/api";
-import { EmbeddedMedia } from "./EmbeddedMedia.js";
+import { EmbeddedMedia } from "./EmbeddedMedia";
 
 export interface PostRecord extends Partial<AppBskyFeedPost.Record> {}
 
