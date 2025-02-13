@@ -5,6 +5,8 @@ export interface MediaProcessResult {
   mediaText: string;
   mimeType: string | null;
   mediaBuffer: Buffer | null;
+  // Solution since instanceof did not work.
+  getType(): 'video' | 'image';
 }
 
 /**
@@ -23,6 +25,10 @@ export class ImageMediaProcessResultImpl implements MediaProcessResult {
       mimeType: this.mimeType,
       mediaBuffer: this.mediaBuffer ? "[Buffer length=" + this.mediaBuffer.length + "]" : null,
     };
+  }
+
+  getType(): 'image'{
+    return 'image';
   }
 } 
 
@@ -43,5 +49,9 @@ export class VideoMediaProcessResultImpl implements MediaProcessResult {
       mimeType: this.mimeType,
       mediaBuffer: this.mediaBuffer ? "[Buffer length=" + this.mediaBuffer.length + "]" : null,
     };
+  }
+
+  getType(): 'video'{
+    return 'video';
   }
 } 

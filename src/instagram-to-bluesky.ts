@@ -15,6 +15,7 @@ import {
   VideoEmbedImpl,
 } from "./bluesky/index";
 import { BlobRef } from "@atproto/api";
+import { ImageMediaProcessResultImpl, VideoMediaProcessResultImpl } from "./media";
 
 dotenv.config();
 
@@ -210,32 +211,33 @@ export async function main() {
 
           if (embeddedMedia) {
             if (Array.isArray(embeddedMedia)) {
-              const embeddedImages: ImageEmbed[] = [];
-              for (const imageMedia of embeddedMedia) {
-                const { mediaBuffer, mimeType } = imageMedia;
+              for (const media of embeddedMedia) {
+                if(media.getType() === 'image') {
+                  const embeddedImages: ImageEmbed[] = [];
+                  const { mediaBuffer, mimeType } = media;
 
-                const blobRef: BlobRef = await bluesky.uploadMedia(
-                  mediaBuffer!,
-                  mimeType!
-                );
-                embeddedImages.push(
-                  new ImageEmbedImpl(postText, blobRef, mimeType!)
-                );
+                  const blobRef: BlobRef = await bluesky.uploadMedia(
+                    mediaBuffer!,
+                    mimeType!
+                  );
+                  embeddedImages.push(
+                    new ImageEmbedImpl(postText, blobRef, mimeType!)
+                  );
+                  uploadedMedia = new ImagesEmbedImpl(embeddedImages);
+                } else if(media.getType() === 'video') {
+                  const { mediaBuffer, mimeType } = media;
+                  const blobRef = await bluesky.uploadMedia(
+                    mediaBuffer!,
+                    mimeType!
+                  );
+                  uploadedMedia = new VideoEmbedImpl(
+                    postText,
+                    mimeType!,
+                    blobRef,
+                    { width: 640, height: 640 }
+                  );
+                }
               }
-
-              uploadedMedia = new ImagesEmbedImpl(embeddedImages);
-            } else {
-              const { mediaBuffer, mimeType } = embeddedMedia;
-              const blobRef = await bluesky.uploadMedia(
-                mediaBuffer!,
-                mimeType!
-              );
-              uploadedMedia = new VideoEmbedImpl(
-                postText,
-                mimeType!,
-                blobRef,
-                { width: 640, height: 640 }
-              );
             }
           }
 
