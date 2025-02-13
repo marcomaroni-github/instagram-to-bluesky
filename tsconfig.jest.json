@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "lib": ["ES2023"]
+  },
+  "include": ["src/**/*.test.ts"],
+  "exclude": ["node_modules"]
+} 

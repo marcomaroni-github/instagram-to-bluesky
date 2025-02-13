@@ -1,15 +1,57 @@
-import { main, formatDuration, calculateEstimatedTime } from '../src/app';
-import { BlueskyClient } from '../src/bluesky';
-import { processPost } from '../src/media';
-import { logger } from '../src/logger';
 import fs from 'fs';
-import { createVideoEmbed } from '../src/video';
+
+import { main, formatDuration, calculateEstimatedTime } from '../src/instagram-to-bluesky';
+import { BlueskyClient } from '../src/bluesky/bluesky';
+import { logger } from '../src/logger/logger';
+import { InstagramMediaProcessor } from '../src/media/media';
+import type { InstagramExportedPost } from '../src/media/InstagramExportedPost';
 
 // Mock all dependencies
 jest.mock('fs');
-jest.mock('../src/bluesky');
-jest.mock('../src/media');
-jest.mock('../src/logger', () => ({
+jest.mock('../src/bluesky/bluesky', () => {
+  return {
+    BlueskyClient: jest.fn().mockImplementation(() => ({
+      login: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn().mockResolvedValue({
+        ref: 'test-blob-ref',
+        mimeType: 'image/jpeg',
+        size: 1000
+      }),
+      createPost: jest.fn().mockResolvedValue('https://bsky.app/profile/test/post/test')
+    }))
+  };
+});
+jest.mock('../src/media/media', () => {
+  const mockProcess = jest.fn().mockResolvedValue([{
+    postDate: new Date(),
+    postText: 'Test post',
+    embeddedMedia: [],
+    mediaCount: 1
+  }]);
+
+  const mockMediaProcessor = {
+    process: jest.fn().mockResolvedValue([{
+      mediaText: 'Test media',
+      mimeType: 'image/jpeg',
+      mediaBuffer: Buffer.from('test')
+    }])
+  };
+
+  return {
+    InstagramMediaProcessor: jest.fn().mockImplementation(
+      (posts: InstagramExportedPost[], folder: string) => ({
+        mediaProcessorFactory: {
+          createProcessor: () => mockMediaProcessor
+        },
+        instagramPosts: posts,
+        archiveFolder: folder,
+        process: mockProcess
+      })
+    ),
+    decodeUTF8: jest.fn(x => x)
+  };
+});
+jest.mock('../src/logger/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -21,20 +63,20 @@ jest.mock('dotenv', () => ({
   config: jest.fn(),
 }));
 jest.mock('../src/video', () => ({
-  prepareVideoUpload: jest.fn(),
+  prepareVideoUpload: jest.fn().mockReturnValue({
+    ref: '', // This will be filled by the upload process with the CID
+    mimeType: 'video/mp4',
+    size: 1000,
+    dimensions: {
+      width: 640,
+      height: 640
+    }
+  }),
   createVideoEmbed: jest.fn(),
   validateVideo: jest.fn(),
-  getVideoDimensions: jest.fn()
+  getVideoDimensions: jest.fn(),
+  processVideoPost: jest.fn()
 }));
-
-// Add this mock before the tests
-jest.mock('../src/app', () => {
-  const originalModule = jest.requireActual('../src/app');
-  return {
-    ...originalModule,
-    getArchiveFolder: () => '/test/folder'
-  };
-});
 
 describe('Main App', () => {
   const originalEnv = process.env;
@@ -61,13 +103,6 @@ describe('Main App', () => {
         title: 'Test Media 1'
       }]
     }]));
-
-    (processPost as jest.Mock).mockResolvedValue({
-      postDate: new Date(),
-      postText: 'Test post',
-      embeddedMedia: [],
-      mediaCount: 1
-    });
 
     // Reset BlueskyClient mock
     jest.mocked(BlueskyClient).mockClear();
@@ -105,10 +140,11 @@ describe('Main App', () => {
     await main();
 
     expect(jest.mocked(BlueskyClient)).toHaveBeenCalled();
-    expect(processPost).toHaveBeenCalledWith(
-      expect.objectContaining(mockPost),
+    expect(InstagramMediaProcessor).toHaveBeenCalledWith(
+      expect.any(Array),
       expect.stringContaining('/test/folder')
     );
+    expect(jest.mocked(InstagramMediaProcessor).mock.results[0].value.process).toHaveBeenCalled();
   });
 
   test('should handle date filtering with MIN_DATE', async () => {
@@ -206,13 +242,6 @@ describe('Main App', () => {
 
     (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
     
-    (processPost as jest.Mock).mockResolvedValue({
-      postDate: new Date(),
-      postText: 'Test post',
-      embeddedMedia: [],
-      mediaCount: 10 // 10 media items
-    });
-
     await main();
 
     expect(logger.info).toHaveBeenCalledWith(
@@ -220,49 +249,25 @@ describe('Main App', () => {
     );
   });
 
-  xtest('should handle video posts correctly', async () => {
-    const mockVideoPost = {
+  test('should process posts successfully', async () => {
+    const mockPost = {
       creation_timestamp: Date.now() / 1000,
-      title: 'Test Video Post',
+      title: 'Test Post',
       media: [{
-        type: 'Video',
         creation_timestamp: Date.now() / 1000,
-        media_url: 'test.mp4',
-        video_buffer: Buffer.from('test')
+        title: 'Test Media'
       }]
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockVideoPost]));
-    
-    // Mock BlueskyClient uploadVideo method
-    jest.mocked(BlueskyClient).prototype.uploadVideo = jest.fn().mockResolvedValue({
-      ref: { $link: 'test-ref' }
-    });
-
-    // Mock the video embed result
-    const mockVideoEmbed = {
-      $type: 'app.bsky.embed.video',
-      video: {
-        $type: 'blob',
-        ref: { $link: 'test-ref' },
-        mimeType: 'video/mp4',
-        size: 1000
-      },
-      aspectRatio: { width: 640, height: 480 }
-    };
-
-    (createVideoEmbed as jest.Mock).mockReturnValue(mockVideoEmbed);
-
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
     await main();
 
-    expect(BlueskyClient.prototype.uploadVideo).toHaveBeenCalled();
-    expect(BlueskyClient.prototype.createPost).toHaveBeenCalledWith(
-      expect.any(Date),
-      expect.any(String),
-      expect.objectContaining({
-        $type: 'app.bsky.embed.video'
-      })
+    expect(jest.mocked(BlueskyClient)).toHaveBeenCalled();
+    expect(InstagramMediaProcessor).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.stringContaining('/test/folder')
     );
+    expect(jest.mocked(InstagramMediaProcessor).mock.results[0].value.process).toHaveBeenCalled();
   });
 });
 

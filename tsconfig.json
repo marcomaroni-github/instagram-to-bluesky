@@ -9,10 +9,8 @@
     "strict": true,
     "noImplicitAny": false,
     "skipLibCheck": true,
+    "moduleDetection": "auto",
     "baseUrl": ".",
-    "paths": {
-      "@src/*": ["src/*"]
-    },
     "outDir": "./dist",
     "rootDir": "./src",
     "sourceMap": true
@@ -22,5 +20,5 @@
     "require": ["tsconfig-paths/register"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "**/*test.ts"]
 }
