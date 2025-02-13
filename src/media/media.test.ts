@@ -8,6 +8,29 @@ jest.mock("fs", () => ({
   readFileSync: jest.fn(),
 }));
 
+// Mock fluent-ffmpeg
+jest.mock("fluent-ffmpeg", () => {
+  return {
+    setFfprobePath: jest.fn(),
+    ffprobe: (path: string, callback: (err: Error | null, data: any) => void) => {
+      callback(null, {
+        streams: [
+          {
+            codec_type: "video",
+            width: 1920,
+            height: 1080,
+          },
+        ],
+      });
+    },
+  };
+});
+
+// Mock @ffprobe-installer/ffprobe
+jest.mock("@ffprobe-installer/ffprobe", () => ({
+  path: "/mock/ffprobe/path",
+}));
+
 // Mock the logger
 jest.mock("../logger/logger", () => ({
   logger: {

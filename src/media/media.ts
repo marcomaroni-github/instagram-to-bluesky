@@ -1,7 +1,7 @@
 import FS from "fs";
 
 import { logger } from "../logger/logger";
-import { getMimeType as getVideoMimeType, validateVideo } from "../video/video";
+import { getVideoDimensions, getMimeType as getVideoMimeType, validateVideo } from "../video/video";
 import { ProcessedPost, ProcessedPostImpl } from "./ProcessedPost";
 import {
   MediaProcessResult,
@@ -234,6 +234,7 @@ export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
     const mimeType = this.getMimeType(fileType);
 
     const mediaBuffer = getMediaBuffer(archiveFolder, media);
+    const aspectRatio = await getVideoDimensions(`${archiveFolder}/${media.uri}`);
 
     if(!validateVideo(mediaBuffer!)) {
       throw Error('Video too large.')
@@ -245,7 +246,7 @@ export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
       title = title.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
     }
     
-    return Promise.resolve(new VideoMediaProcessResultImpl(title, mimeType, mediaBuffer!));
+    return new VideoMediaProcessResultImpl(title, mimeType, mediaBuffer!, aspectRatio);
   }
 }
 

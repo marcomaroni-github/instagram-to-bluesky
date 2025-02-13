@@ -15,7 +15,10 @@ import {
   VideoEmbedImpl,
 } from "./bluesky/index";
 import { BlobRef } from "@atproto/api";
-import { ImageMediaProcessResultImpl, VideoMediaProcessResultImpl } from "./media";
+import {
+  ImageMediaProcessResultImpl,
+  VideoMediaProcessResultImpl,
+} from "./media";
 
 dotenv.config();
 
@@ -212,7 +215,7 @@ export async function main() {
           if (embeddedMedia) {
             if (Array.isArray(embeddedMedia)) {
               for (const media of embeddedMedia) {
-                if(media.getType() === 'image') {
+                if (media.getType() === "image") {
                   const embeddedImages: ImageEmbed[] = [];
                   const { mediaBuffer, mimeType } = media;
 
@@ -224,8 +227,9 @@ export async function main() {
                     new ImageEmbedImpl(postText, blobRef, mimeType!)
                   );
                   uploadedMedia = new ImagesEmbedImpl(embeddedImages);
-                } else if(media.getType() === 'video') {
-                  const { mediaBuffer, mimeType } = media;
+                } else if (media.getType() === "video") {
+                  const { mediaBuffer, mimeType, aspectRatio } =
+                    media as VideoMediaProcessResultImpl;
                   const blobRef = await bluesky.uploadMedia(
                     mediaBuffer!,
                     mimeType!
@@ -234,7 +238,7 @@ export async function main() {
                     postText,
                     mimeType!,
                     blobRef,
-                    { width: 640, height: 640 }
+                    aspectRatio
                   );
                 }
               }

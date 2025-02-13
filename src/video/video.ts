@@ -1,6 +1,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import ffprobe from "@ffprobe-installer/ffprobe";
 import { logger } from "../logger/logger";
+import { Ratio } from "../media";
 // Configure ffmpeg to use ffprobe
 ffmpeg.setFfprobePath(ffprobe.path);
 
@@ -30,7 +31,7 @@ export function validateVideo(buffer: Buffer): boolean {
  */
 export async function getVideoDimensions(
   filePath: string
-): Promise<{ width: number; height: number }> {
+): Promise<Ratio> {
   logger.debug(`Getting video dimensions for: ${filePath}`);
   return new Promise((resolve, reject) => {
     ffmpeg.ffprobe(filePath, (err: Error, metadata) => {
