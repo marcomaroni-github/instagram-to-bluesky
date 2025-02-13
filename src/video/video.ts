@@ -69,7 +69,6 @@ export function getMimeType(fileType: string): string {
     case "mov":
       return "video/quicktime";
     default:
-      logger.warn(`Unsupported Video File type ${fileType}`);
       return "";
   }
 }
