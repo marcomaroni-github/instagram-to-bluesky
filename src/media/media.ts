@@ -1,20 +1,13 @@
-import FS from "fs";
+import FS from 'fs';
 
-import { logger } from "../logger/logger";
-import { getVideoDimensions, getMimeType as getVideoMimeType, validateVideo } from "../video/video";
-import { ProcessedPost, ProcessedPostImpl } from "./ProcessedPost";
+import { getImageMimeType } from '../image';
+import { logger } from '../logger/logger';
+import { getMimeType as getVideoMimeType, getVideoDimensions, validateVideo } from '../video/video';
+import { ImageMedia, InstagramExportedPost, Media, VideoMedia } from './InstagramExportedPost';
 import {
-  MediaProcessResult,
-  ImageMediaProcessResultImpl,
-  VideoMediaProcessResultImpl,
-} from "./MediaProcessResult";
-import {
-  ImageMedia,
-  InstagramExportedPost,
-  Media,
-  VideoMedia,
-} from "./InstagramExportedPost";
-import { getImageMimeType } from "../image";
+    ImageMediaProcessResultImpl, MediaProcessResult, VideoMediaProcessResultImpl
+} from './MediaProcessResult';
+import { ProcessedPost, ProcessedPostImpl } from './ProcessedPost';
 
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
@@ -91,7 +84,7 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
       const postDate = new Date(timestamp * 1000);
       
       // Truncate post title if it exceeds the limit
-      let title = post.title;
+      let title = post.title ?? post.media[0].title;
       if (title && title.length > POST_TEXT_LIMIT) {
         logger.info(`Truncating post title from ${title.length} to ${POST_TEXT_LIMIT} characters`);
         title = title.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
