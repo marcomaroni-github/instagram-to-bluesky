@@ -15,7 +15,7 @@ import {
   VideoMedia,
 } from "./InstagramExportedPost";
 import { getImageMimeType } from "../image";
-// TODO make a stratgey pattern for video versus image
+
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
