@@ -339,3 +339,15 @@ class DefaultMediaProcessorFactory implements MediaProcessorFactory {
     return hasVideo;
   }
 }
+
+export * from './processors/InstagramMediaProcessor';
+export * from './processors/InstagramImageProcessor';
+export * from './processors/InstagramVideoProcessor';
+export * from './processors/DefaultMediaProcessorFactory';
+export * from './interfaces/ProcessStrategy';
+export * from './interfaces/MIMEType';
+export * from './interfaces/InstagramPostProcessingStrategy';
+export * from './interfaces/ImageMediaProcessingStrategy';
+export * from './interfaces/VideoMediaProcessingStrategy';
+export * from './interfaces/MediaProcessorFactory';
+export * from './utils';
