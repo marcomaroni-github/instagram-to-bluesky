@@ -56,7 +56,7 @@ export class InstagramVideoProcessor implements VideoMediaProcessingStrategy {
     }
     
     let title = media.title;
-    if (title && title.length > POST_TEXT_LIMIT) {
+    if (title && title.length > POST_TEXT_LIMIT  - POST_TEXT_TRUNCATE_SUFFIX.length) {
       logger.info(`Truncating video title from ${title.length} to ${POST_TEXT_LIMIT} characters`);
       title = title.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
     }

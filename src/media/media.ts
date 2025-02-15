@@ -85,7 +85,7 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
       
       // Truncate post title if it exceeds the limit
       let title = post.title ?? post.media[0].title;
-      if (title && title.length > POST_TEXT_LIMIT) {
+      if (title && title.length > POST_TEXT_LIMIT - POST_TEXT_TRUNCATE_SUFFIX.length) {
         logger.info(`Truncating post title from ${title.length} to ${POST_TEXT_LIMIT} characters`);
         title = title.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
       }

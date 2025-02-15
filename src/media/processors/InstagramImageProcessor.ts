@@ -66,7 +66,7 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
     }
 
     let truncatedText = mediaText;
-    if (mediaText.length > POST_TEXT_LIMIT) {
+    if (mediaText.length > POST_TEXT_LIMIT  - POST_TEXT_TRUNCATE_SUFFIX.length) {
       logger.info(`Truncating image caption from ${mediaText.length} to ${POST_TEXT_LIMIT} characters`);
       truncatedText = mediaText.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
     }
