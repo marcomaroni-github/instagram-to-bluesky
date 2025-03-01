@@ -9,6 +9,10 @@ import {
 } from './MediaProcessResult';
 import { ProcessedPost, ProcessedPostImpl } from './ProcessedPost';
 
+/**
+ * @link https://docs.bsky.app/docs/advanced-guides/posts#:~:text=Each%20post%20contains%20up%20to,alt%20text%20and%20aspect%20ratio.
+ * "Each post contains up to four images, and each image can have its own alt text and aspect ratio."
+ */
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
@@ -95,7 +99,7 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
       // Limit media to MAX_IMAGES_PER_POST
       let limitedMedia = post.media;
       if (Array.isArray(post.media) && post.media.length > MAX_IMAGES_PER_POST) {
-        logger.info(`Limiting post media from ${post.media.length} to ${MAX_IMAGES_PER_POST} items`);
+        logger.warn(`Limiting post media from ${post.media.length} to ${MAX_IMAGES_PER_POST} items`);
         limitedMedia = post.media.slice(0, MAX_IMAGES_PER_POST);
       }
       

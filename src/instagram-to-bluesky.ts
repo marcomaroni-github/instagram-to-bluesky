@@ -22,16 +22,19 @@ const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides
  * Returns the absolute path to the archive folder
  * @param TEST_VIDEO_MODE
  * @param TEST_IMAGE_MODE
+ * @param TEST_IMAGES_MODE
  * @returns
  */
 export function getArchiveFolder(
   TEST_VIDEO_MODE: boolean,
-  TEST_IMAGE_MODE: boolean
+  TEST_IMAGE_MODE: boolean,
+  TEST_IMAGES_MODE: boolean
 ) {
   const rootDir = path.resolve(__dirname, "..");
 
-  if (TEST_VIDEO_MODE) return path.join(rootDir, "transfer/test_videos");
-  if (TEST_IMAGE_MODE) return path.join(rootDir, "transfer/test_images");
+  if (TEST_VIDEO_MODE) return path.join(rootDir, "transfer/test_video");
+  if (TEST_IMAGE_MODE) return path.join(rootDir, "transfer/test_image");
+  if (TEST_IMAGES_MODE) return path.join(rootDir, "transfer/test_images");
   return process.env.ARCHIVE_FOLDER!;
 }
 
@@ -41,9 +44,11 @@ export function getArchiveFolder(
  */
 function validateTestConfig(
   TEST_VIDEO_MODE: boolean,
-  TEST_IMAGE_MODE: boolean
+  TEST_IMAGE_MODE: boolean,
+  TEST_IMAGES_MODE: boolean
 ) {
-  if (TEST_VIDEO_MODE && TEST_IMAGE_MODE) {
+  // TODO check for more than one enabled.
+  if (TEST_VIDEO_MODE && TEST_IMAGE_MODE && TEST_IMAGES_MODE) {
     throw new Error(
       "Cannot enable both TEST_VIDEO_MODE and TEST_IMAGE_MODE simultaneously"
     );
@@ -70,8 +75,10 @@ export async function main() {
   const SIMULATE = process.env.SIMULATE === "1";
   const TEST_VIDEO_MODE = process.env.TEST_VIDEO_MODE === "1";
   const TEST_IMAGE_MODE = process.env.TEST_IMAGE_MODE === "1";
+  const TEST_IMAGES_MODE = process.env.TEST_IMAGES_MODE === "1";
 
-  validateTestConfig(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
+  // TODO make test configuration object
+  validateTestConfig(TEST_VIDEO_MODE, TEST_IMAGE_MODE, TEST_IMAGES_MODE);
 
   let MIN_DATE: Date | undefined = process.env.MIN_DATE
     ? new Date(process.env.MIN_DATE)
@@ -79,7 +86,9 @@ export async function main() {
   let MAX_DATE: Date | undefined = process.env.MAX_DATE
     ? new Date(process.env.MAX_DATE)
     : undefined;
-  const archivalFolder = getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
+    
+  // TODO make test configuration object
+  const archivalFolder = getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE, TEST_IMAGES_MODE);
 
   // Log begining of import with a start date time to calculate the total time.
   const importStart: Date = new Date();
@@ -108,7 +117,7 @@ export async function main() {
 
   // Decide where to fetch post data to process from.
   let postsJsonPath: string;
-  if (TEST_VIDEO_MODE || TEST_IMAGE_MODE) {
+  if (TEST_VIDEO_MODE || TEST_IMAGE_MODE  || TEST_IMAGES_MODE) {
     // Use test post(s) to validate functionality with a test account.
     postsJsonPath = path.join(archivalFolder, "posts.json");
     logger.info(
@@ -123,11 +132,11 @@ export async function main() {
   }
 
   // Read instagram posts JSON file as raw buffer data.
-  const fInstaPosts: Buffer = FS.readFileSync(postsJsonPath);
+  const instaPostsFileBuffer: Buffer = FS.readFileSync(postsJsonPath);
 
   // Decode raw JSON data into an object.
   const allInstaPosts: InstagramExportedPost[] = decodeUTF8(
-    JSON.parse(fInstaPosts.toString())
+    JSON.parse(instaPostsFileBuffer.toString())
   );
 
   // Initialize counters for posts and media imports.
