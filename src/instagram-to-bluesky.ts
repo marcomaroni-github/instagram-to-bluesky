@@ -247,6 +247,8 @@ export async function main() {
                     aspectRatio
                   );
                 }
+                // Increment the imported media as each is uploaded incase a failure occcurs the user can see the descrepancy.
+                importedMedia++;
               }
             }
           }
@@ -265,6 +267,7 @@ export async function main() {
               importedPosts++;
             }
           }
+
         } catch (error) {
           logger.error(
             `Failed to create Bluesky post: ${
@@ -288,9 +291,6 @@ export async function main() {
             postText.length > 50 ? postText.substring(0, 50) + "..." : postText,
         },
       });
-
-      // Add the total media posted to inform the user.
-      importedMedia += mediaCount;
     }
 
     // If we are simulating the migration we want to inform the user the estimated time it may take.
