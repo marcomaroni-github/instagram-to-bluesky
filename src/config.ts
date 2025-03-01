@@ -10,15 +10,18 @@ export class AppConfig {
   private readonly testVideoMode: boolean;
   private readonly testImageMode: boolean;
   private readonly testImagesMode: boolean;
+  private readonly simulate: boolean;
 
   constructor(config: {
     testVideoMode: boolean;
     testImageMode: boolean;
     testImagesMode: boolean;
+    simulate: boolean;
   }) {
     this.testVideoMode = config.testVideoMode;
     this.testImageMode = config.testImageMode;
     this.testImagesMode = config.testImagesMode;
+    this.simulate = config.simulate;
   }
 
   /**
@@ -28,7 +31,8 @@ export class AppConfig {
     return new AppConfig({
       testVideoMode: process.env.TEST_VIDEO_MODE === '1',
       testImageMode: process.env.TEST_IMAGE_MODE === '1',
-      testImagesMode: process.env.TEST_IMAGES_MODE === '1'
+      testImagesMode: process.env.TEST_IMAGES_MODE === '1',
+      simulate: process.env.SIMULATE === '1'
     });
   }
 
@@ -37,6 +41,13 @@ export class AppConfig {
    */
   isTestModeEnabled(): boolean {
     return this.testVideoMode || this.testImageMode || this.testImagesMode;
+  }
+
+  /**
+   * Checks if simulate mode is enabled
+   */
+  isSimulateEnabled(): boolean {
+    return this.simulate;
   }
 
   /**

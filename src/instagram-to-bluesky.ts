@@ -1,4 +1,3 @@
-import * as dotenv from 'dotenv';
 import FS from 'fs';
 import path from 'path';
 import * as process from 'process';
@@ -15,7 +14,6 @@ import { MediaProcessResult, VideoMediaProcessResultImpl } from './media';
 import { InstagramExportedPost } from './media/InstagramExportedPost';
 import { decodeUTF8, InstagramMediaProcessor } from './media/media';
 
-dotenv.config();
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
 
@@ -113,7 +111,6 @@ export async function uploadMediaAndEmbed(
  *
  */
 export async function main() {
-  const SIMULATE = process.env.SIMULATE === "1";
   const config = AppConfig.fromEnv();
   config.validate();
 
@@ -134,13 +131,13 @@ export async function main() {
     username: process.env.BLUESKY_USERNAME,
     MIN_DATE,
     MAX_DATE,
-    SIMULATE,
+    SIMULATE: config.isSimulateEnabled(),
   });
 
   // Setup BlueSky Client only used if SIMULATE is not configured.
   let bluesky: BlueskyClient | null = null;
 
-  if (!SIMULATE) {
+  if (!config.isSimulateEnabled()) {
     logger.info("--- SIMULATE mode is disabled, posts will be imported ---");
     bluesky = new BlueskyClient(
       process.env.BLUESKY_USERNAME!,
@@ -241,7 +238,7 @@ export async function main() {
       }
 
       // If we are not simulating migration we create the post with the embedded media.
-      if (!SIMULATE && bluesky) {
+      if (!config.isSimulateEnabled() && bluesky) {
         await new Promise((resolve) =>
           setTimeout(resolve, API_RATE_LIMIT_DELAY)
         );
@@ -297,7 +294,7 @@ export async function main() {
     }
 
     // If we are simulating the migration we want to inform the user the estimated time it may take.
-    if (SIMULATE) {
+    if (config.isSimulateEnabled()) {
       const estimatedTime = calculateEstimatedTime(importedMedia);
       logger.info(`Estimated time for real import: ${estimatedTime}`);
     }

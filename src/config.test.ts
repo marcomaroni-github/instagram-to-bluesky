@@ -10,6 +10,7 @@ describe('AppConfig', () => {
     delete process.env.TEST_VIDEO_MODE;
     delete process.env.TEST_IMAGE_MODE;
     delete process.env.TEST_IMAGES_MODE;
+    delete process.env.SIMULATE;
   });
 
   afterEach(() => {
@@ -20,6 +21,11 @@ describe('AppConfig', () => {
     test('should create config with all test modes disabled by default', () => {
       const config = AppConfig.fromEnv();
       expect(config.isTestModeEnabled()).toBe(false);
+    });
+
+    test('should create config with simulate mode disabled by default', () => {
+      const config = AppConfig.fromEnv();
+      expect(config.isSimulateEnabled()).toBe(false);
     });
 
     test('should enable test video mode when TEST_VIDEO_MODE=1', () => {
@@ -38,6 +44,12 @@ describe('AppConfig', () => {
       process.env.TEST_IMAGES_MODE = '1';
       const config = AppConfig.fromEnv();
       expect(config.isTestModeEnabled()).toBe(true);
+    });
+
+    test('should enable simulate mode when SIMULATE=1', () => {
+      process.env.SIMULATE = '1';
+      const config = AppConfig.fromEnv();
+      expect(config.isSimulateEnabled()).toBe(true);
     });
   });
 
@@ -107,6 +119,19 @@ describe('AppConfig', () => {
         const config = AppConfig.fromEnv();
         expect(config.isTestModeEnabled()).toBe(true);
       });
+    });
+  });
+
+  describe('isSimulateEnabled', () => {
+    test('should return false when simulate mode is not enabled', () => {
+      const config = AppConfig.fromEnv();
+      expect(config.isSimulateEnabled()).toBe(false);
+    });
+
+    test('should return true when simulate mode is enabled', () => {
+      process.env.SIMULATE = '1';
+      const config = AppConfig.fromEnv();
+      expect(config.isSimulateEnabled()).toBe(true);
     });
   });
 }); 
