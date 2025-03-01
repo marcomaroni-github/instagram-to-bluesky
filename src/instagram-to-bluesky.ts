@@ -1,6 +1,5 @@
 import FS from 'fs';
 import path from 'path';
-import * as process from 'process';
 
 import { BlobRef } from '@atproto/api';
 
@@ -121,7 +120,7 @@ export async function main() {
   logger.info(`Import started at ${importStart.toISOString()}`);
   logger.info({
     SourceFolder: archivalFolder,
-    username: process.env.BLUESKY_USERNAME,
+    username: config.getBlueskyUsername(),
     MIN_DATE: config.getMinDate(),
     MAX_DATE: config.getMaxDate(),
     SIMULATE: config.isSimulateEnabled(),
@@ -133,8 +132,8 @@ export async function main() {
   if (!config.isSimulateEnabled()) {
     logger.info("--- SIMULATE mode is disabled, posts will be imported ---");
     bluesky = new BlueskyClient(
-      process.env.BLUESKY_USERNAME!,
-      process.env.BLUESKY_PASSWORD!
+      config.getBlueskyUsername(),
+      config.getBlueskyPassword()
     );
     await bluesky.login();
   } else {

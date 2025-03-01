@@ -13,6 +13,9 @@ describe('AppConfig', () => {
     delete process.env.SIMULATE;
     delete process.env.MIN_DATE;
     delete process.env.MAX_DATE;
+    delete process.env.BLUESKY_USERNAME;
+    delete process.env.BLUESKY_PASSWORD;
+    delete process.env.ARCHIVE_FOLDER;
   });
 
   afterEach(() => {
@@ -34,6 +37,17 @@ describe('AppConfig', () => {
       const config = AppConfig.fromEnv();
       expect(config.getMinDate()).toBeUndefined();
       expect(config.getMaxDate()).toBeUndefined();
+    });
+
+    test('should create config with empty Bluesky credentials by default', () => {
+      const config = AppConfig.fromEnv();
+      expect(config.getBlueskyUsername()).toBe('');
+      expect(config.getBlueskyPassword()).toBe('');
+    });
+
+    test('should create config with empty archive folder by default', () => {
+      const config = AppConfig.fromEnv();
+      expect(config.getArchiveFolder()).toBe('');
     });
 
     test('should enable test video mode when TEST_VIDEO_MODE=1', () => {
@@ -79,16 +93,34 @@ describe('AppConfig', () => {
       expect(config.getMinDate()).toEqual(new Date('2023-01-01'));
       expect(config.getMaxDate()).toEqual(new Date('2024-12-31'));
     });
+
+    test('should set Bluesky credentials when provided', () => {
+      process.env.BLUESKY_USERNAME = 'test_user';
+      process.env.BLUESKY_PASSWORD = 'test_pass';
+      const config = AppConfig.fromEnv();
+      expect(config.getBlueskyUsername()).toBe('test_user');
+      expect(config.getBlueskyPassword()).toBe('test_pass');
+    });
+
+    test('should set archive folder when provided', () => {
+      process.env.ARCHIVE_FOLDER = '/custom/archive/path';
+      const config = AppConfig.fromEnv();
+      expect(config.getArchiveFolder()).toBe('/custom/archive/path');
+    });
   });
 
   describe('validate', () => {
-    test('should not throw when no test modes are enabled', () => {
+    test('should not throw when no test modes are enabled and in simulate mode', () => {
+      process.env.SIMULATE = '1';
+      process.env.ARCHIVE_FOLDER = '/custom/archive/path'; // Add archive folder to avoid validation error
       const config = AppConfig.fromEnv();
       expect(() => config.validate()).not.toThrow();
     });
 
     test('should not throw when only one test mode is enabled', () => {
       process.env.TEST_VIDEO_MODE = '1';
+      // In test mode, we need to set SIMULATE or provide Bluesky credentials
+      process.env.SIMULATE = '1';
       const config = AppConfig.fromEnv();
       expect(() => config.validate()).not.toThrow();
     });
@@ -96,8 +128,38 @@ describe('AppConfig', () => {
     test('should throw when multiple test modes are enabled', () => {
       process.env.TEST_VIDEO_MODE = '1';
       process.env.TEST_IMAGE_MODE = '1';
+      process.env.SIMULATE = '1'; // Add simulate mode to avoid other validation errors
       const config = AppConfig.fromEnv();
       expect(() => config.validate()).toThrow('Cannot enable multiple test modes simultaneously');
+    });
+
+    test('should throw when not in simulate mode and Bluesky username is missing', () => {
+      process.env.BLUESKY_PASSWORD = 'test_pass';
+      process.env.ARCHIVE_FOLDER = '/custom/archive/path'; // Add archive folder to avoid that validation error
+      const config = AppConfig.fromEnv();
+      expect(() => config.validate()).toThrow('BLUESKY_USERNAME is required when not in simulate mode');
+    });
+
+    test('should throw when not in simulate mode and Bluesky password is missing', () => {
+      process.env.BLUESKY_USERNAME = 'test_user';
+      process.env.ARCHIVE_FOLDER = '/custom/archive/path'; // Add archive folder to avoid that validation error
+      const config = AppConfig.fromEnv();
+      expect(() => config.validate()).toThrow('BLUESKY_PASSWORD is required when not in simulate mode');
+    });
+
+    test('should throw when not in test mode and archive folder is missing', () => {
+      process.env.BLUESKY_USERNAME = 'test_user';
+      process.env.BLUESKY_PASSWORD = 'test_pass';
+      const config = AppConfig.fromEnv();
+      expect(() => config.validate()).toThrow('ARCHIVE_FOLDER is required when not in test mode');
+    });
+
+    test('should not throw when all required fields are provided', () => {
+      process.env.BLUESKY_USERNAME = 'test_user';
+      process.env.BLUESKY_PASSWORD = 'test_pass';
+      process.env.ARCHIVE_FOLDER = '/custom/archive/path';
+      const config = AppConfig.fromEnv();
+      expect(() => config.validate()).not.toThrow();
     });
   });
 
@@ -188,6 +250,22 @@ describe('AppConfig', () => {
       const config = AppConfig.fromEnv();
       expect(config.getMinDate()?.toString()).toBe('Invalid Date');
       expect(config.getMaxDate()?.toString()).toBe('Invalid Date');
+    });
+  });
+
+  describe('getBlueskyUsername and getBlueskyPassword', () => {
+    test('should return empty strings when credentials are not set', () => {
+      const config = AppConfig.fromEnv();
+      expect(config.getBlueskyUsername()).toBe('');
+      expect(config.getBlueskyPassword()).toBe('');
+    });
+
+    test('should return correct values when credentials are set', () => {
+      process.env.BLUESKY_USERNAME = 'test_user';
+      process.env.BLUESKY_PASSWORD = 'test_pass';
+      const config = AppConfig.fromEnv();
+      expect(config.getBlueskyUsername()).toBe('test_user');
+      expect(config.getBlueskyPassword()).toBe('test_pass');
     });
   });
 }); 

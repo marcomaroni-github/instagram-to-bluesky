@@ -5,6 +5,7 @@ dotenv.config();
 
 /**
  * Configuration for the application
+ * Includes all environment configuration except the log level to keep it simple.
  */
 export class AppConfig {
   private readonly testVideoMode: boolean;
@@ -13,6 +14,9 @@ export class AppConfig {
   private readonly simulate: boolean;
   private readonly minDate: Date | undefined;
   private readonly maxDate: Date | undefined;
+  private readonly blueskyUsername: string;
+  private readonly blueskyPassword: string;
+  private readonly archiveFolder: string;
 
   constructor(config: {
     testVideoMode: boolean;
@@ -21,6 +25,9 @@ export class AppConfig {
     simulate: boolean;
     minDate?: Date;
     maxDate?: Date;
+    blueskyUsername: string;
+    blueskyPassword: string;
+    archiveFolder: string;
   }) {
     this.testVideoMode = config.testVideoMode;
     this.testImageMode = config.testImageMode;
@@ -28,6 +35,9 @@ export class AppConfig {
     this.simulate = config.simulate;
     this.minDate = config.minDate;
     this.maxDate = config.maxDate;
+    this.blueskyUsername = config.blueskyUsername;
+    this.blueskyPassword = config.blueskyPassword;
+    this.archiveFolder = config.archiveFolder;
   }
 
   /**
@@ -40,7 +50,10 @@ export class AppConfig {
       testImagesMode: process.env.TEST_IMAGES_MODE === '1',
       simulate: process.env.SIMULATE === '1',
       minDate: process.env.MIN_DATE ? new Date(process.env.MIN_DATE) : undefined,
-      maxDate: process.env.MAX_DATE ? new Date(process.env.MAX_DATE) : undefined
+      maxDate: process.env.MAX_DATE ? new Date(process.env.MAX_DATE) : undefined,
+      blueskyUsername: process.env.BLUESKY_USERNAME || '',
+      blueskyPassword: process.env.BLUESKY_PASSWORD || '',
+      archiveFolder: process.env.ARCHIVE_FOLDER || ''
     });
   }
 
@@ -73,6 +86,20 @@ export class AppConfig {
   }
 
   /**
+   * Gets the Bluesky username
+   */
+  getBlueskyUsername(): string {
+    return this.blueskyUsername;
+  }
+
+  /**
+   * Gets the Bluesky password
+   */
+  getBlueskyPassword(): string {
+    return this.blueskyPassword;
+  }
+
+  /**
    * Gets the archive folder path based on test configuration
    */
   getArchiveFolder(): string {
@@ -81,7 +108,7 @@ export class AppConfig {
     if (this.testVideoMode) return path.join(rootDir, 'transfer/test_video');
     if (this.testImageMode) return path.join(rootDir, 'transfer/test_image');
     if (this.testImagesMode) return path.join(rootDir, 'transfer/test_images');
-    return process.env.ARCHIVE_FOLDER!;
+    return this.archiveFolder;
   }
 
   /**
@@ -101,6 +128,21 @@ export class AppConfig {
       throw new Error(
         `Cannot enable multiple test modes simultaneously: ${enabledModes.join(', ')}`
       );
+    }
+
+    // Validate required fields when not in simulate mode
+    if (!this.simulate) {
+      if (!this.blueskyUsername) {
+        throw new Error('BLUESKY_USERNAME is required when not in simulate mode');
+      }
+      if (!this.blueskyPassword) {
+        throw new Error('BLUESKY_PASSWORD is required when not in simulate mode');
+      }
+    }
+
+    // Validate archive folder
+    if (!this.isTestModeEnabled() && !this.archiveFolder) {
+      throw new Error('ARCHIVE_FOLDER is required when not in test mode');
     }
   }
 } 
