@@ -1,9 +1,10 @@
 import fs from 'fs';
 
-import { main, formatDuration, calculateEstimatedTime } from '../src/instagram-to-bluesky';
+import { main, formatDuration, calculateEstimatedTime, uploadMediaAndEmbed } from '../src/instagram-to-bluesky';
 import { BlueskyClient } from '../src/bluesky/bluesky';
 import { logger } from '../src/logger/logger';
 import { InstagramMediaProcessor } from '../src/media/media';
+import { ImagesEmbedImpl, VideoEmbedImpl } from '../src/bluesky/index';
 import type { InstagramExportedPost } from '../src/media/InstagramExportedPost';
 
 // Mock all dependencies
@@ -269,6 +270,97 @@ describe('Main App', () => {
     );
     expect(jest.mocked(InstagramMediaProcessor).mock.results[0].value.process).toHaveBeenCalled();
   });
+
+  test('should process multiple images in a post correctly', async () => {
+    // Mock the posts.json content with multiple images
+    const mockPost = {
+      creation_timestamp: 1658871955,
+      title: "A lil flower garden update:\n\nDalia is in full bloom, Dalia Fascination\nAnd my Hibiscus is looking fierce, Starry Starry Night\n\n#daliaflower #hibiscusplant",
+      media: [
+        {
+          uri: "media/posts/202207/296182505_2306736436140223_1131775985609414029_n_17908919372611575.webp",
+          creation_timestamp: 1658871953
+        },
+        {
+          uri: "media/posts/202207/295533146_3324225487861619_7021607269857186723_n_17969743933670683.webp",
+          creation_timestamp: 1658871953
+        },
+        {
+          uri: "media/posts/202207/295912830_382044777369802_7402982082333793499_n_18022601347396344.webp",
+          creation_timestamp: 1658871953
+        },
+        {
+          uri: "media/posts/202207/295652603_422749169622405_7528877124810844569_n_17957390530916779.webp",
+          creation_timestamp: 1658871953
+        },
+        {
+          uri: "media/posts/202207/295709430_3269025470003456_6772629498034016772_n_17932740269206594.webp",
+          creation_timestamp: 1658871953
+        }
+      ]
+    };
+
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
+
+    const embeddedMedia = mockPost.media.map(() => ({
+      getType: () => "image",
+      mediaBuffer: Buffer.from('test'),
+      mimeType: 'image/jpeg'
+    }));
+
+    // Mock the media processor to return multiple images
+    const mockMediaProcessor = {
+      process: jest.fn().mockResolvedValue([{
+        postDate: new Date(mockPost.creation_timestamp * 1000),
+        postText: mockPost.title,
+        // Max images will slice the media to 4
+        embeddedMedia: embeddedMedia.slice(0, 4)
+      }])
+    };
+
+    (InstagramMediaProcessor as jest.Mock).mockImplementation(() => ({
+      mediaProcessorFactory: {
+        createProcessor: () => mockMediaProcessor
+      },
+      instagramPosts: [mockPost],
+      archiveFolder: '/test/folder',
+      process: mockMediaProcessor.process
+    }));
+
+    // Mock BlueskyClient for tracking uploads
+    const mockBlueskyClient = {
+      login: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn().mockImplementation((_, __) => {
+        return Promise.resolve({
+          ref: `test-blob-ref-${mockBlueskyClient.uploadMedia.mock.calls.length}`,
+          mimeType: 'image/jpeg',
+          size: 1000
+        });
+      }),
+      createPost: jest.fn().mockImplementation((_, __, embed) => {
+        // Verify the post contains all images in the embed
+        expect(embed.images?.length).toBe(4);
+        return Promise.resolve('https://bsky.app/profile/test/post/test');
+      })
+    };
+
+    (BlueskyClient as jest.Mock).mockImplementation(() => mockBlueskyClient);
+
+    await main();
+
+    // Verify that uploadMedia was called for each image
+    expect(mockBlueskyClient.uploadMedia).toHaveBeenCalledTimes(4);
+    
+    // Verify that createPost was called exactly once with all images
+    expect(mockBlueskyClient.createPost).toHaveBeenCalledTimes(1);
+    const createPostCall = mockBlueskyClient.createPost.mock.calls[0];
+    const embedArg = createPostCall[2];
+    expect(embedArg.images?.length).toBe(4);
+    
+    // Verify each image in the embed has a unique blob ref
+    const blobRefs = new Set(embedArg.images?.map((img: any) => img.image.ref));
+    expect(blobRefs.size).toBe(4);
+  });
 });
 
 describe('Time Formatting Functions', () => {
@@ -301,5 +393,116 @@ describe('Time Formatting Functions', () => {
         expect(calculateEstimatedTime(mediaCount)).toBe(expected);
       });
     });
+  });
+});
+
+describe('uploadMediaAndEmbed', () => {
+  // Extract the function for testing
+  let uploadMediaAndEmbed: (
+    postText: string,
+    embeddedMedia: any[],
+    bluesky: BlueskyClient
+  ) => Promise<{
+    importedMediaCount: number;
+    uploadedMedia: any;
+  }>;
+  
+  beforeAll(() => {
+    // Get access to the inner function for testing
+    const mainModule = require('../src/instagram-to-bluesky');
+    uploadMediaAndEmbed = mainModule.uploadMediaAndEmbed;
+  });
+
+  test('should handle multiple images correctly', async () => {
+    const mockBluesky = {
+      uploadMedia: jest.fn().mockImplementation((_, __) => 
+        Promise.resolve({
+          ref: `test-blob-ref-${mockBluesky.uploadMedia.mock.calls.length}`,
+          mimeType: 'image/jpeg',
+          size: 1000
+        })
+      )
+    };
+
+    const mockImages = Array(4).fill(null).map(() => ({
+      getType: () => 'image',
+      mediaBuffer: Buffer.from('test'),
+      mimeType: 'image/jpeg'
+    }));
+
+    const result = await uploadMediaAndEmbed(
+      'Test post text',
+      mockImages,
+      mockBluesky as any
+    );
+
+    // Verify correct number of uploads
+    expect(mockBluesky.uploadMedia).toHaveBeenCalledTimes(4);
+    expect(result.importedMediaCount).toBe(4);
+
+    // Verify the uploaded media structure
+    expect(result.uploadedMedia).toBeDefined();
+    const imagesEmbed = result.uploadedMedia as ImagesEmbedImpl;
+    expect(imagesEmbed.images).toHaveLength(4);
+
+    // Verify each image has a unique blob ref
+    const blobRefs = new Set(imagesEmbed.images.map(img => img.image.ref));
+    expect(blobRefs.size).toBe(4);
+  });
+
+  test('should handle video upload correctly', async () => {
+    const mockBluesky = {
+      uploadMedia: jest.fn().mockResolvedValue({
+        ref: 'test-video-blob-ref',
+        mimeType: 'video/mp4',
+        size: 1000
+      })
+    };
+
+    const mockVideo = {
+      getType: () => 'video',
+      mediaBuffer: Buffer.from('test-video'),
+      mimeType: 'video/mp4',
+      aspectRatio: 1.777
+    };
+
+    const result = await uploadMediaAndEmbed(
+      'Test video post',
+      [mockVideo],
+      mockBluesky as any
+    );
+
+    expect(mockBluesky.uploadMedia).toHaveBeenCalledTimes(1);
+    expect(result.importedMediaCount).toBe(1);
+    expect(result.uploadedMedia).toBeDefined();
+
+    const videoEmbed = result.uploadedMedia as VideoEmbedImpl;
+    expect(videoEmbed.video.ref).toBe('test-video-blob-ref');
+    expect(videoEmbed.video.mimeType).toBe('video/mp4');
+  });
+
+  test('should handle upload failures gracefully', async () => {
+    const mockBluesky = {
+      uploadMedia: jest.fn().mockRejectedValue(new Error('Upload failed'))
+    };
+
+    const mockImage = {
+      getType: () => 'image',
+      mediaBuffer: Buffer.from('test'),
+      mimeType: 'image/jpeg'
+    };
+
+    const result = await uploadMediaAndEmbed(
+      'Test failed upload',
+      [mockImage],
+      mockBluesky as any
+    );
+
+    expect(mockBluesky.uploadMedia).toHaveBeenCalledTimes(1);
+    expect(result.importedMediaCount).toBe(0);
+    expect(result.uploadedMedia).toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Upload failed')
+    );
   });
 });
