@@ -9,6 +9,7 @@ import { BlueskyClient } from './bluesky/bluesky';
 import {
     EmbeddedMedia, ImageEmbed, ImageEmbedImpl, ImagesEmbedImpl, VideoEmbedImpl
 } from './bluesky/index';
+import { AppConfig } from './config';
 import { logger } from './logger/logger';
 import { MediaProcessResult, VideoMediaProcessResultImpl } from './media';
 import { InstagramExportedPost } from './media/InstagramExportedPost';
@@ -17,43 +18,6 @@ import { decodeUTF8, InstagramMediaProcessor } from './media/media';
 dotenv.config();
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
-
-/**
- * Returns the absolute path to the archive folder
- * @param TEST_VIDEO_MODE
- * @param TEST_IMAGE_MODE
- * @param TEST_IMAGES_MODE
- * @returns
- */
-export function getArchiveFolder(
-  TEST_VIDEO_MODE: boolean,
-  TEST_IMAGE_MODE: boolean,
-  TEST_IMAGES_MODE: boolean
-) {
-  const rootDir = path.resolve(__dirname, "..");
-
-  if (TEST_VIDEO_MODE) return path.join(rootDir, "transfer/test_video");
-  if (TEST_IMAGE_MODE) return path.join(rootDir, "transfer/test_image");
-  if (TEST_IMAGES_MODE) return path.join(rootDir, "transfer/test_images");
-  return process.env.ARCHIVE_FOLDER!;
-}
-
-/**
- * Validates test mode configuration
- * @throws Error if both test modes are enabled
- */
-function validateTestConfig(
-  TEST_VIDEO_MODE: boolean,
-  TEST_IMAGE_MODE: boolean,
-  TEST_IMAGES_MODE: boolean
-) {
-  // TODO check for more than one enabled.
-  if (TEST_VIDEO_MODE && TEST_IMAGE_MODE && TEST_IMAGES_MODE) {
-    throw new Error(
-      "Cannot enable both TEST_VIDEO_MODE and TEST_IMAGE_MODE simultaneously"
-    );
-  }
-}
 
 export function formatDuration(milliseconds: number): string {
   const minutes = Math.floor(milliseconds / (1000 * 60));
@@ -149,14 +113,9 @@ export async function uploadMediaAndEmbed(
  *
  */
 export async function main() {
-  // Set environment variables within function scope, allows mocked unit testing.
   const SIMULATE = process.env.SIMULATE === "1";
-  const TEST_VIDEO_MODE = process.env.TEST_VIDEO_MODE === "1";
-  const TEST_IMAGE_MODE = process.env.TEST_IMAGE_MODE === "1";
-  const TEST_IMAGES_MODE = process.env.TEST_IMAGES_MODE === "1";
-
-  // TODO make test configuration object
-  validateTestConfig(TEST_VIDEO_MODE, TEST_IMAGE_MODE, TEST_IMAGES_MODE);
+  const config = AppConfig.fromEnv();
+  config.validate();
 
   let MIN_DATE: Date | undefined = process.env.MIN_DATE
     ? new Date(process.env.MIN_DATE)
@@ -165,12 +124,7 @@ export async function main() {
     ? new Date(process.env.MAX_DATE)
     : undefined;
 
-  // TODO make test configuration object
-  const archivalFolder = getArchiveFolder(
-    TEST_VIDEO_MODE,
-    TEST_IMAGE_MODE,
-    TEST_IMAGES_MODE
-  );
+  const archivalFolder = config.getArchiveFolder();
 
   // Log begining of import with a start date time to calculate the total time.
   const importStart: Date = new Date();
@@ -199,17 +153,15 @@ export async function main() {
 
   // Decide where to fetch post data to process from.
   let postsJsonPath: string;
-  if (TEST_VIDEO_MODE || TEST_IMAGE_MODE || TEST_IMAGES_MODE) {
-    // Use test post(s) to validate functionality with a test account.
-    postsJsonPath = path.join(archivalFolder, "posts.json");
+  if (config.isTestModeEnabled()) {
+    postsJsonPath = path.join(archivalFolder, 'posts.json');
     logger.info(
       `--- TEST mode is enabled, using content from ${archivalFolder} ---`
     );
   } else {
-    // Use real instagram exported posts.
     postsJsonPath = path.join(
       archivalFolder,
-      "your_instagram_activity/content/posts_1.json"
+      'your_instagram_activity/content/posts_1.json'
     );
   }
 
