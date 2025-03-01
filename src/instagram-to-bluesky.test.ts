@@ -544,22 +544,6 @@ describe('Time Formatting Functions', () => {
 });
 
 describe('uploadMediaAndEmbed', () => {
-  // Extract the function for testing
-  let uploadMediaAndEmbed: (
-    postText: string,
-    embeddedMedia: any[],
-    bluesky: BlueskyClient
-  ) => Promise<{
-    importedMediaCount: number;
-    uploadedMedia: any;
-  }>;
-  
-  beforeAll(() => {
-    // Get access to the inner function for testing
-    const mainModule = require('../src/instagram-to-bluesky');
-    uploadMediaAndEmbed = mainModule.uploadMediaAndEmbed;
-  });
-
   test('should handle multiple images correctly', async () => {
     const mockBluesky = {
       uploadMedia: jest.fn().mockImplementation((_, __) => 
@@ -571,10 +555,11 @@ describe('uploadMediaAndEmbed', () => {
       )
     };
 
-    const mockImages = Array(4).fill(null).map(() => ({
-      getType: () => 'image',
+    const mockImages = Array(4).fill(null).map((_, index) => ({
+      getType: (): "image" => "image",
       mediaBuffer: Buffer.from('test'),
-      mimeType: 'image/jpeg'
+      mimeType: 'image/jpeg',
+      mediaText: `Test image ${index + 1}`
     }));
 
     const result = await uploadMediaAndEmbed(
@@ -607,10 +592,11 @@ describe('uploadMediaAndEmbed', () => {
     };
 
     const mockVideo = {
-      getType: () => 'video',
+      getType: (): "video" => "video",
       mediaBuffer: Buffer.from('test-video'),
       mimeType: 'video/mp4',
-      aspectRatio: 1.777
+      mediaText: 'Test video',
+      aspectRatio: { width: 1920, height: 1080 }
     };
 
     const result = await uploadMediaAndEmbed(
@@ -634,9 +620,10 @@ describe('uploadMediaAndEmbed', () => {
     };
 
     const mockImage = {
-      getType: () => 'image',
+      getType: (): "image" => "image",
       mediaBuffer: Buffer.from('test'),
-      mimeType: 'image/jpeg'
+      mimeType: 'image/jpeg',
+      mediaText: 'Test image that will fail to upload'
     };
 
     const result = await uploadMediaAndEmbed(
