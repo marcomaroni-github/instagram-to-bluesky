@@ -114,13 +114,6 @@ export async function main() {
   const config = AppConfig.fromEnv();
   config.validate();
 
-  let MIN_DATE: Date | undefined = process.env.MIN_DATE
-    ? new Date(process.env.MIN_DATE)
-    : undefined;
-  let MAX_DATE: Date | undefined = process.env.MAX_DATE
-    ? new Date(process.env.MAX_DATE)
-    : undefined;
-
   const archivalFolder = config.getArchiveFolder();
 
   // Log begining of import with a start date time to calculate the total time.
@@ -129,8 +122,8 @@ export async function main() {
   logger.info({
     SourceFolder: archivalFolder,
     username: process.env.BLUESKY_USERNAME,
-    MIN_DATE,
-    MAX_DATE,
+    MIN_DATE: config.getMinDate(),
+    MAX_DATE: config.getMaxDate(),
     SIMULATE: config.isSimulateEnabled(),
   });
 
@@ -202,7 +195,8 @@ export async function main() {
       }
 
       // If MIN_DATE configured validate the creation date is after the minimum date config.
-      if (MIN_DATE && checkDate && checkDate < MIN_DATE) {
+      const minDate = config.getMinDate();
+      if (minDate && checkDate && checkDate < minDate) {
         logger.warn(
           `Skipping post - Before MIN_DATE: [${checkDate.toUTCString()}]`
         );
@@ -210,7 +204,8 @@ export async function main() {
       }
 
       // If MAX_DATE configured validate the creation date is before the max date config.
-      if (MAX_DATE && checkDate > MAX_DATE) {
+      const maxDate = config.getMaxDate();
+      if (maxDate && checkDate > maxDate) {
         logger.warn(
           `Skipping post - After MAX_DATE [${checkDate.toUTCString()}]`
         );

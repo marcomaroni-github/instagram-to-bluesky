@@ -11,6 +11,8 @@ describe('AppConfig', () => {
     delete process.env.TEST_IMAGE_MODE;
     delete process.env.TEST_IMAGES_MODE;
     delete process.env.SIMULATE;
+    delete process.env.MIN_DATE;
+    delete process.env.MAX_DATE;
   });
 
   afterEach(() => {
@@ -26,6 +28,12 @@ describe('AppConfig', () => {
     test('should create config with simulate mode disabled by default', () => {
       const config = AppConfig.fromEnv();
       expect(config.isSimulateEnabled()).toBe(false);
+    });
+
+    test('should create config with undefined min and max dates by default', () => {
+      const config = AppConfig.fromEnv();
+      expect(config.getMinDate()).toBeUndefined();
+      expect(config.getMaxDate()).toBeUndefined();
     });
 
     test('should enable test video mode when TEST_VIDEO_MODE=1', () => {
@@ -50,6 +58,26 @@ describe('AppConfig', () => {
       process.env.SIMULATE = '1';
       const config = AppConfig.fromEnv();
       expect(config.isSimulateEnabled()).toBe(true);
+    });
+
+    test('should set minDate when MIN_DATE is provided', () => {
+      process.env.MIN_DATE = '2023-01-01';
+      const config = AppConfig.fromEnv();
+      expect(config.getMinDate()).toEqual(new Date('2023-01-01'));
+    });
+
+    test('should set maxDate when MAX_DATE is provided', () => {
+      process.env.MAX_DATE = '2024-12-31';
+      const config = AppConfig.fromEnv();
+      expect(config.getMaxDate()).toEqual(new Date('2024-12-31'));
+    });
+
+    test('should set both minDate and maxDate when both are provided', () => {
+      process.env.MIN_DATE = '2023-01-01';
+      process.env.MAX_DATE = '2024-12-31';
+      const config = AppConfig.fromEnv();
+      expect(config.getMinDate()).toEqual(new Date('2023-01-01'));
+      expect(config.getMaxDate()).toEqual(new Date('2024-12-31'));
     });
   });
 
@@ -132,6 +160,34 @@ describe('AppConfig', () => {
       process.env.SIMULATE = '1';
       const config = AppConfig.fromEnv();
       expect(config.isSimulateEnabled()).toBe(true);
+    });
+  });
+
+  describe('getMinDate and getMaxDate', () => {
+    test('should return undefined when no dates are set', () => {
+      const config = AppConfig.fromEnv();
+      expect(config.getMinDate()).toBeUndefined();
+      expect(config.getMaxDate()).toBeUndefined();
+    });
+
+    test('should return correct date when MIN_DATE is set', () => {
+      process.env.MIN_DATE = '2023-01-01';
+      const config = AppConfig.fromEnv();
+      expect(config.getMinDate()).toEqual(new Date('2023-01-01'));
+    });
+
+    test('should return correct date when MAX_DATE is set', () => {
+      process.env.MAX_DATE = '2024-12-31';
+      const config = AppConfig.fromEnv();
+      expect(config.getMaxDate()).toEqual(new Date('2024-12-31'));
+    });
+
+    test('should handle invalid date strings', () => {
+      process.env.MIN_DATE = 'not-a-date';
+      process.env.MAX_DATE = 'also-not-a-date';
+      const config = AppConfig.fromEnv();
+      expect(config.getMinDate()?.toString()).toBe('Invalid Date');
+      expect(config.getMaxDate()?.toString()).toBe('Invalid Date');
     });
   });
 }); 
