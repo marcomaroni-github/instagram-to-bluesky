@@ -201,7 +201,6 @@ export async function main() {
         continue;
       }
 
-      // TODO add unit test for min max posts.
       // If MIN_DATE configured validate the creation date is after the minimum date config.
       if (MIN_DATE && checkDate && checkDate < MIN_DATE) {
         logger.warn(

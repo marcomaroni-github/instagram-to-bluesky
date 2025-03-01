@@ -188,6 +188,153 @@ describe('Main App', () => {
     expect(logger.warn).toHaveBeenCalledWith('Skipping post - After MAX_DATE [Wed, 01 Jan 2025 00:00:00 GMT]');
   });
 
+  // New tests for MIN_DATE and MAX_DATE functionality
+  describe('Date Filtering', () => {
+    test('should include posts exactly on MIN_DATE', async () => {
+      process.env.MIN_DATE = '2024-01-01';
+      
+      const exactMinDatePost = {
+        creation_timestamp: new Date('2024-01-01').getTime() / 1000,
+        title: 'Exact Min Date Post',
+        media: [{
+          creation_timestamp: new Date('2024-01-01').getTime() / 1000,
+          title: 'Exact Min Date Media'
+        }]
+      };
+
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([exactMinDatePost]));
+
+      await main();
+
+      // The post should be processed, not skipped
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Skipping post - Before MIN_DATE')
+      );
+      expect(InstagramMediaProcessor).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ title: 'Exact Min Date Post' })]),
+        expect.any(String)
+      );
+    });
+
+    test('should exclude posts exactly on MAX_DATE', async () => {
+      process.env.MAX_DATE = '2024-01-01';
+      
+      const exactMaxDatePost = {
+        creation_timestamp: new Date('2024-01-01').getTime() / 1000,
+        title: 'Exact Max Date Post',
+        media: [{
+          creation_timestamp: new Date('2024-01-01').getTime() / 1000,
+          title: 'Exact Max Date Media'
+        }]
+      };
+
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([exactMaxDatePost]));
+
+      await main();
+
+      // The post should be processed, not skipped (MAX_DATE is exclusive)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Skipping post - After MAX_DATE')
+      );
+      expect(InstagramMediaProcessor).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ title: 'Exact Max Date Post' })]),
+        expect.any(String)
+      );
+    });
+
+    test('should filter posts with both MIN_DATE and MAX_DATE set', async () => {
+      process.env.MIN_DATE = '2023-01-01';
+      process.env.MAX_DATE = '2025-01-01';
+      
+      const posts = [
+        {
+          creation_timestamp: new Date('2022-01-01').getTime() / 1000, // Too old
+          title: 'Too Old Post',
+          media: [{ creation_timestamp: new Date('2022-01-01').getTime() / 1000, title: 'Old Media' }]
+        },
+        {
+          creation_timestamp: new Date('2023-06-01').getTime() / 1000, // In range
+          title: 'In Range Post 1',
+          media: [{ creation_timestamp: new Date('2023-06-01').getTime() / 1000, title: 'In Range Media 1' }]
+        },
+        {
+          creation_timestamp: new Date('2024-06-01').getTime() / 1000, // In range
+          title: 'In Range Post 2',
+          media: [{ creation_timestamp: new Date('2024-06-01').getTime() / 1000, title: 'In Range Media 2' }]
+        },
+        {
+          creation_timestamp: new Date('2026-01-01').getTime() / 1000, // Too new
+          title: 'Too New Post',
+          media: [{ creation_timestamp: new Date('2026-01-01').getTime() / 1000, title: 'New Media' }]
+        }
+      ];
+
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(posts));
+
+      await main();
+
+      // Should skip the too old post
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Skipping post - Before MIN_DATE: [Sat, 01 Jan 2022 00:00:00 GMT]'
+      );
+      
+      // Should skip the too new post
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Skipping post - After MAX_DATE [Thu, 01 Jan 2026 00:00:00 GMT]'
+      );
+      
+      // Should process the in-range posts
+      expect(InstagramMediaProcessor).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ title: 'In Range Post 1' }),
+          expect.objectContaining({ title: 'In Range Post 2' })
+        ]),
+        expect.any(String)
+      );
+    });
+
+    test('should use media timestamp when post timestamp is missing', async () => {
+      process.env.MIN_DATE = '2023-01-01';
+      process.env.MAX_DATE = '2025-01-01';
+      
+      const posts = [
+        {
+          // No creation_timestamp at post level
+          title: 'Post with only media timestamp',
+          media: [{ 
+            creation_timestamp: new Date('2024-01-01').getTime() / 1000, 
+            title: 'Media with timestamp' 
+          }]
+        },
+        {
+          // No creation_timestamp at post level
+          title: 'Post with old media timestamp',
+          media: [{ 
+            creation_timestamp: new Date('2022-01-01').getTime() / 1000, 
+            title: 'Too old media' 
+          }]
+        }
+      ];
+
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(posts));
+
+      await main();
+
+      // Should skip the post with old media timestamp
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Skipping post - Before MIN_DATE: [Sat, 01 Jan 2022 00:00:00 GMT]'
+      );
+      
+      // Should process the post with valid media timestamp
+      expect(InstagramMediaProcessor).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ title: 'Post with only media timestamp' })
+        ]),
+        expect.any(String)
+      );
+    });
+  });
+
   test('should handle posts with missing dates', async () => {
     const invalidPost = {
       title: 'Invalid Post',
