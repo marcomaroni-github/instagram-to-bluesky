@@ -188,7 +188,6 @@ describe('Main App', () => {
     expect(logger.warn).toHaveBeenCalledWith('Skipping post - After MAX_DATE [Wed, 01 Jan 2025 00:00:00 GMT]');
   });
 
-  // New tests for MIN_DATE and MAX_DATE functionality
   describe('Date Filtering', () => {
     test('should include posts exactly on MIN_DATE', async () => {
       process.env.MIN_DATE = '2024-01-01';
