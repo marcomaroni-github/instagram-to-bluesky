@@ -1,24 +1,18 @@
-import * as dotenv from "dotenv";
-import FS from "fs";
-import path from "path";
-import * as process from "process";
+import * as dotenv from 'dotenv';
+import FS from 'fs';
+import path from 'path';
+import * as process from 'process';
 
-import { BlueskyClient } from "./bluesky/bluesky";
-import { logger } from "./logger/logger";
-import { decodeUTF8, InstagramMediaProcessor } from "./media/media";
-import { InstagramExportedPost } from "./media/InstagramExportedPost";
+import { BlobRef } from '@atproto/api';
+
+import { BlueskyClient } from './bluesky/bluesky';
 import {
-  EmbeddedMedia,
-  ImageEmbed,
-  ImageEmbedImpl,
-  ImagesEmbedImpl,
-  VideoEmbedImpl,
-} from "./bluesky/index";
-import { BlobRef } from "@atproto/api";
-import {
-  ImageMediaProcessResultImpl,
-  VideoMediaProcessResultImpl,
-} from "./media";
+    EmbeddedMedia, ImageEmbed, ImageEmbedImpl, ImagesEmbedImpl, VideoEmbedImpl
+} from './bluesky/index';
+import { logger } from './logger/logger';
+import { VideoMediaProcessResultImpl } from './media';
+import { InstagramExportedPost } from './media/InstagramExportedPost';
+import { decodeUTF8, InstagramMediaProcessor } from './media/media';
 
 dotenv.config();
 
@@ -132,17 +126,18 @@ export async function main() {
   const fInstaPosts: Buffer = FS.readFileSync(postsJsonPath);
 
   // Decode raw JSON data into an object.
-  const instaPosts: InstagramExportedPost[] = decodeUTF8(
+  const allInstaPosts: InstagramExportedPost[] = decodeUTF8(
     JSON.parse(fInstaPosts.toString())
   );
 
   // Initialize counters for posts and media imports.
   let importedPosts = 0;
   let importedMedia = 0;
+  const instaPosts: InstagramExportedPost[] = [];
 
   // Sort instagram posts by creation timestamp
-  if (instaPosts && instaPosts.length > 0) {
-    const sortedPosts = instaPosts.sort((a, b) => {
+  if (allInstaPosts && allInstaPosts.length > 0) {
+    const sortedPosts = allInstaPosts.sort((a, b) => {
       // Get the first posts media and compare timestamps.
       const ad = a.media[0].creation_timestamp;
       const bd = b.media[0].creation_timestamp;
@@ -181,6 +176,8 @@ export async function main() {
         );
         break;
       }
+
+      instaPosts.push(post);
     }
 
     // Create media processor that can handle multiple data formats.
