@@ -1,7 +1,5 @@
-import * as dotenv from 'dotenv';
 import FS from 'fs';
 import path from 'path';
-import * as process from 'process';
 
 import { BlobRef } from '@atproto/api';
 
@@ -9,46 +7,15 @@ import { BlueskyClient } from './bluesky/bluesky';
 import {
     EmbeddedMedia, ImageEmbed, ImageEmbedImpl, ImagesEmbedImpl, VideoEmbedImpl
 } from './bluesky/index';
+import { AppConfig } from './config';
 import { logger } from './logger/logger';
-import { VideoMediaProcessResultImpl } from './media';
+import { ImageMediaProcessResultImpl, MediaProcessResult, VideoMediaProcessResultImpl } from './media';
 import { InstagramExportedPost } from './media/InstagramExportedPost';
 import { decodeUTF8, InstagramMediaProcessor } from './media/media';
+import sharp from 'sharp';
 
-dotenv.config();
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
-
-/**
- * Returns the absolute path to the archive folder
- * @param TEST_VIDEO_MODE
- * @param TEST_IMAGE_MODE
- * @returns
- */
-export function getArchiveFolder(
-  TEST_VIDEO_MODE: boolean,
-  TEST_IMAGE_MODE: boolean
-) {
-  const rootDir = path.resolve(__dirname, "..");
-
-  if (TEST_VIDEO_MODE) return path.join(rootDir, "transfer/test_videos");
-  if (TEST_IMAGE_MODE) return path.join(rootDir, "transfer/test_images");
-  return process.env.ARCHIVE_FOLDER!;
-}
-
-/**
- * Validates test mode configuration
- * @throws Error if both test modes are enabled
- */
-function validateTestConfig(
-  TEST_VIDEO_MODE: boolean,
-  TEST_IMAGE_MODE: boolean
-) {
-  if (TEST_VIDEO_MODE && TEST_IMAGE_MODE) {
-    throw new Error(
-      "Cannot enable both TEST_VIDEO_MODE and TEST_IMAGE_MODE simultaneously"
-    );
-  }
-}
 
 export function formatDuration(milliseconds: number): string {
   const minutes = Math.floor(milliseconds / (1000 * 60));
@@ -63,43 +30,111 @@ export function calculateEstimatedTime(importedMedia: number): string {
 }
 
 /**
+ * Uploads media files to Bluesky and creates appropriate embed objects
+ * 
+ * This function processes an array of media files of the same type (either all images or all videos)
+ * and uploads them to Bluesky's servers. For images, it collects them into a single ImagesEmbed object.
+ * For videos, it creates a VideoEmbed object. If mixed media types are provided, only the first type
+ * encountered will be processed.
+ * 
+ * @param postText - The text content of the post to be associated with the media
+ * @param embeddedMedia - Array of media objects to be processed and uploaded (should be same type)
+ * @param bluesky - The BlueskyClient instance used for uploading media
+ * 
+ * @returns {Promise<{
+ *   importedMediaCount: number, // Number of successfully uploaded media files
+ *   uploadedMedia: EmbeddedMedia | undefined // The final embed object for the post
+ * }>}
+ * 
+ * @throws Will log but not throw errors from failed media uploads
+ * 
+ * @example
+ * const result = await uploadMedia(
+ *   "My vacation photos",
+ *   mediaArray,
+ *   blueskyClient
+ * );
+ */
+export async function uploadMediaAndEmbed(
+  postText: string,
+  embeddedMedia: MediaProcessResult[],
+  bluesky: BlueskyClient
+): Promise<{
+  importedMediaCount: number;
+  uploadedMedia: EmbeddedMedia | undefined;
+}> {
+  let uploadedMedia: EmbeddedMedia | undefined = undefined;
+  let importedMedia = 0;
+  const embeddedImages: ImageEmbed[] = [];
+
+  for (const media of embeddedMedia) {
+    try {
+      if (media.getType() === "image") {
+        const { mediaBuffer, mimeType, aspectRatio } = media as ImageMediaProcessResultImpl;
+
+        const blobRef: BlobRef = await bluesky.uploadMedia(
+          mediaBuffer!,
+          mimeType!
+        );
+        embeddedImages.push(new ImageEmbedImpl(postText, blobRef, mimeType!, aspectRatio));
+        uploadedMedia = new ImagesEmbedImpl(embeddedImages);
+      } else if (media.getType() === "video") {
+        const { mediaBuffer, mimeType, aspectRatio } =
+          media as VideoMediaProcessResultImpl;
+        const blobRef = await bluesky.uploadMedia(mediaBuffer!, mimeType!);
+        uploadedMedia = new VideoEmbedImpl(
+          postText,
+          mimeType!,
+          blobRef,
+          aspectRatio
+        );
+      }
+      // Increment the imported media as each is uploaded incase a failure occcurs the user can see the descrepancy.
+      importedMedia++;
+    } catch (error) {
+      logger.error(
+        `Failed to upload media: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+      // Continue with the next post even if this one failed
+    }
+  }
+
+  return {
+    importedMediaCount: importedMedia,
+    uploadedMedia,
+  };
+}
+
+/**
  *
  */
 export async function main() {
-  // Set environment variables within function scope, allows mocked unit testing.
-  const SIMULATE = process.env.SIMULATE === "1";
-  const TEST_VIDEO_MODE = process.env.TEST_VIDEO_MODE === "1";
-  const TEST_IMAGE_MODE = process.env.TEST_IMAGE_MODE === "1";
+  const config = AppConfig.fromEnv();
+  config.validate();
 
-  validateTestConfig(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
-
-  let MIN_DATE: Date | undefined = process.env.MIN_DATE
-    ? new Date(process.env.MIN_DATE)
-    : undefined;
-  let MAX_DATE: Date | undefined = process.env.MAX_DATE
-    ? new Date(process.env.MAX_DATE)
-    : undefined;
-  const archivalFolder = getArchiveFolder(TEST_VIDEO_MODE, TEST_IMAGE_MODE);
+  const archivalFolder = config.getArchiveFolder();
 
   // Log begining of import with a start date time to calculate the total time.
   const importStart: Date = new Date();
   logger.info(`Import started at ${importStart.toISOString()}`);
   logger.info({
     SourceFolder: archivalFolder,
-    username: process.env.BLUESKY_USERNAME,
-    MIN_DATE,
-    MAX_DATE,
-    SIMULATE,
+    username: config.getBlueskyUsername(),
+    MIN_DATE: config.getMinDate(),
+    MAX_DATE: config.getMaxDate(),
+    SIMULATE: config.isSimulateEnabled(),
   });
 
   // Setup BlueSky Client only used if SIMULATE is not configured.
   let bluesky: BlueskyClient | null = null;
 
-  if (!SIMULATE) {
+  if (!config.isSimulateEnabled()) {
     logger.info("--- SIMULATE mode is disabled, posts will be imported ---");
     bluesky = new BlueskyClient(
-      process.env.BLUESKY_USERNAME!,
-      process.env.BLUESKY_PASSWORD!
+      config.getBlueskyUsername(),
+      config.getBlueskyPassword()
     );
     await bluesky.login();
   } else {
@@ -108,29 +143,27 @@ export async function main() {
 
   // Decide where to fetch post data to process from.
   let postsJsonPath: string;
-  if (TEST_VIDEO_MODE || TEST_IMAGE_MODE) {
-    // Use test post(s) to validate functionality with a test account.
-    postsJsonPath = path.join(archivalFolder, "posts.json");
+  if (config.isTestModeEnabled()) {
+    postsJsonPath = path.join(archivalFolder, 'posts.json');
     logger.info(
       `--- TEST mode is enabled, using content from ${archivalFolder} ---`
     );
   } else {
-    // Use real instagram exported posts.
     postsJsonPath = path.join(
       archivalFolder,
-      "your_instagram_activity/content/posts_1.json"
+      'your_instagram_activity/content/posts_1.json'
     );
   }
 
   // Read instagram posts JSON file as raw buffer data.
-  const fInstaPosts: Buffer = FS.readFileSync(postsJsonPath);
+  const instaPostsFileBuffer: Buffer = FS.readFileSync(postsJsonPath);
 
   // Decode raw JSON data into an object.
   const allInstaPosts: InstagramExportedPost[] = decodeUTF8(
-    JSON.parse(fInstaPosts.toString())
+    JSON.parse(instaPostsFileBuffer.toString())
   );
 
-  // Initialize counters for posts and media imports.
+  // Initialize counters for posts and media.
   let importedPosts = 0;
   let importedMedia = 0;
   const instaPosts: InstagramExportedPost[] = [];
@@ -162,7 +195,8 @@ export async function main() {
       }
 
       // If MIN_DATE configured validate the creation date is after the minimum date config.
-      if (MIN_DATE && checkDate && checkDate < MIN_DATE) {
+      const minDate = config.getMinDate();
+      if (minDate && checkDate && checkDate < minDate) {
         logger.warn(
           `Skipping post - Before MIN_DATE: [${checkDate.toUTCString()}]`
         );
@@ -170,7 +204,8 @@ export async function main() {
       }
 
       // If MAX_DATE configured validate the creation date is before the max date config.
-      if (MAX_DATE && checkDate > MAX_DATE) {
+      const maxDate = config.getMaxDate();
+      if (maxDate && checkDate > maxDate) {
         logger.warn(
           `Skipping post - After MAX_DATE [${checkDate.toUTCString()}]`
         );
@@ -189,12 +224,7 @@ export async function main() {
     // Process posts with images and a video.
     const processedPosts = await mediaProcessor.process();
 
-    for (const {
-      postDate,
-      postText,
-      embeddedMedia,
-      mediaCount,
-    } of processedPosts) {
+    for (const { postDate, postText, embeddedMedia } of processedPosts) {
       // If the post does not have a creation date after processing skip.
       if (!postDate) {
         logger.warn("Skipping post - Invalid date");
@@ -202,45 +232,19 @@ export async function main() {
       }
 
       // If we are not simulating migration we create the post with the embedded media.
-      if (!SIMULATE && bluesky) {
+      if (!config.isSimulateEnabled() && bluesky) {
         await new Promise((resolve) =>
           setTimeout(resolve, API_RATE_LIMIT_DELAY)
         );
         try {
-          let uploadedMedia: EmbeddedMedia | undefined;
-
-          if (embeddedMedia) {
-            if (Array.isArray(embeddedMedia)) {
-              for (const media of embeddedMedia) {
-                if (media.getType() === "image") {
-                  const embeddedImages: ImageEmbed[] = [];
-                  const { mediaBuffer, mimeType } = media;
-
-                  const blobRef: BlobRef = await bluesky.uploadMedia(
-                    mediaBuffer!,
-                    mimeType!
-                  );
-                  embeddedImages.push(
-                    new ImageEmbedImpl(postText, blobRef, mimeType!)
-                  );
-                  uploadedMedia = new ImagesEmbedImpl(embeddedImages);
-                } else if (media.getType() === "video") {
-                  const { mediaBuffer, mimeType, aspectRatio } =
-                    media as VideoMediaProcessResultImpl;
-                  const blobRef = await bluesky.uploadMedia(
-                    mediaBuffer!,
-                    mimeType!
-                  );
-                  uploadedMedia = new VideoEmbedImpl(
-                    postText,
-                    mimeType!,
-                    blobRef,
-                    aspectRatio
-                  );
-                }
-              }
-            }
-          }
+          // Upload all the embedded media
+          const { uploadedMedia, importedMediaCount } = await uploadMediaAndEmbed(
+            postText,
+            embeddedMedia,
+            bluesky
+          );
+          // Added uploaded media to the counter.
+          importedMedia += importedMediaCount;
 
           if (uploadedMedia) {
             // Create post with embedded pre-uploaded data.
@@ -255,6 +259,8 @@ export async function main() {
               logger.info(`Bluesky post created with url: ${postUrl}`);
               importedPosts++;
             }
+          } else {
+            logger.warn('No media uploaded! Check Error logs.');
           }
         } catch (error) {
           logger.error(
@@ -279,13 +285,10 @@ export async function main() {
             postText.length > 50 ? postText.substring(0, 50) + "..." : postText,
         },
       });
-
-      // Add the total media posted to inform the user.
-      importedMedia += mediaCount;
     }
 
     // If we are simulating the migration we want to inform the user the estimated time it may take.
-    if (SIMULATE) {
+    if (config.isSimulateEnabled()) {
       const estimatedTime = calculateEstimatedTime(importedMedia);
       logger.info(`Estimated time for real import: ${estimatedTime}`);
     }

@@ -1,12 +1,46 @@
 import fs from "fs";
 
-import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor, decodeUTF8 } from "./media";
+import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor, decodeUTF8, getImageSize } from "./media";
 import { InstagramExportedPost, VideoMedia, ImageMedia } from "./InstagramExportedPost";
+import { Ratio } from "./MediaProcessResult";
 
 // Mock the file system
 jest.mock("fs", () => ({
   readFileSync: jest.fn(),
 }));
+
+// Mock sharp
+jest.mock("sharp", () => {
+  return function(filePath: string) {
+    // Mock different behavior based on file path for testing different scenarios
+    if (filePath && filePath.includes('missing.jpg')) {
+      throw new Error('Input file is missing');
+    }
+    
+    if (filePath && filePath.includes('invalid.jpg')) {
+      return {
+        metadata: jest.fn().mockResolvedValue({})
+      };
+    }
+    
+    if (filePath && filePath.includes('landscape.jpg')) {
+      return {
+        metadata: jest.fn().mockResolvedValue({ width: 1920, height: 1080 })
+      };
+    }
+    
+    if (filePath && filePath.includes('portrait.jpg')) {
+      return {
+        metadata: jest.fn().mockResolvedValue({ width: 1080, height: 1920 })
+      };
+    }
+    
+    // Default square image
+    return {
+      metadata: jest.fn().mockResolvedValue({ width: 1080, height: 1080 })
+    };
+  };
+});
 
 // Mock fluent-ffmpeg
 jest.mock("fluent-ffmpeg", () => {
@@ -356,5 +390,38 @@ describe("decodeUTF8", () => {
     const input = "Basil, Eucalyptus, Thyme \u00f0\u009f\u0098\u008d\u00f0\u009f\u008c\u00b1";
     const result = decodeUTF8(input);
     expect(result).toBe("Basil, Eucalyptus, Thyme 😍🌱");
+  });
+});
+
+describe("getImageSize", () => {
+  test("should return correct dimensions for a square image", async () => {
+    const result = await getImageSize("/path/to/square.jpg");
+    expect(result).toEqual({ width: 1080, height: 1080 });
+  });
+
+  test("should return correct dimensions for a landscape image", async () => {
+    const result = await getImageSize("/path/to/landscape.jpg");
+    expect(result).toEqual({ width: 1920, height: 1080 });
+  });
+
+  test("should return correct dimensions for a portrait image", async () => {
+    const result = await getImageSize("/path/to/portrait.jpg");
+    expect(result).toEqual({ width: 1080, height: 1920 });
+  });
+
+  test("should return null when metadata is missing width or height", async () => {
+    const result = await getImageSize("/path/to/invalid.jpg");
+    expect(result).toBeNull();
+  });
+
+  test("should handle errors when file is missing", async () => {
+    try {
+      await getImageSize("/path/to/missing.jpg");
+      // If we reach here, the test should fail
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeDefined();
+      expect((error as Error).message).toContain("Input file is missing");
+    }
   });
 });

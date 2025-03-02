@@ -4,6 +4,7 @@ import { ImageMedia, Media } from "../InstagramExportedPost";
 import { MediaProcessResult, ImageMediaProcessResultImpl } from "../MediaProcessResult";
 import { getImageMimeType } from "../../image";
 import { getMediaBuffer } from "../utils";
+import { getImageSize } from "../media";
 
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
@@ -52,6 +53,7 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
     const fileType = media.uri.substring(media.uri.lastIndexOf(".") + 1);
     const mimeType = this.getMimeType(fileType);
     const mediaBuffer = getMediaBuffer(archiveFolder, media);
+    const aspectRatio = await getImageSize(`${archiveFolder}/${media.uri}`);
 
     let mediaText = media.title ?? "";
     if (
@@ -74,7 +76,8 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
     return new ImageMediaProcessResultImpl(
       truncatedText,
       mimeType,
-      mediaBuffer!
+      mediaBuffer!,
+      aspectRatio!
     );
   }
 } 

@@ -5,6 +5,7 @@ export interface MediaProcessResult {
   mediaText: string;
   mimeType: string | null;
   mediaBuffer: Buffer | null;
+  aspectRatio: Ratio;
   // Solution since instanceof did not work.
   getType(): "video" | "image";
 }
@@ -16,7 +17,8 @@ export class ImageMediaProcessResultImpl implements MediaProcessResult {
   constructor(
     public mediaText: string,
     public mimeType: string | null,
-    public mediaBuffer: Buffer | null
+    public mediaBuffer: Buffer | null,
+    public aspectRatio: Ratio
   ) {}
 
   toJSON() {
@@ -36,15 +38,11 @@ export class ImageMediaProcessResultImpl implements MediaProcessResult {
 
 export type Ratio = { width: number; height: number };
 
-interface AspectRatio {
-  aspectRatio: Ratio;
-}
-
 /**
  * Social media video processed to be uploaded to Bluesky.
  */
 export class VideoMediaProcessResultImpl
-  implements MediaProcessResult, AspectRatio
+  implements MediaProcessResult
 {
   constructor(
     public mediaText: string,
