@@ -38,6 +38,7 @@ npm run test:coverage
     - .nvmrc exists, run `nvm use`.
 - Your Instagram archive in JSON format ([download your archive here](https://www.instagram.com/download/request))
 - A Bluesky account with an App Password
+    - Verified email or videos will show up as not found.
 
 ## Getting Started
 
@@ -56,6 +57,7 @@ ARCHIVE_FOLDER=c:/download/instagram-username-2025-XX-XX-hash
 SIMULATE=1                # Set to 1 to simulate import without posting
 TEST_VIDEO_MODE=0        # Set to 1 to test video imports
 TEST_IMAGE_MODE=0        # Set to 1 to test image imports
+TEST_IMAGES_MODE=0      # Set to 1 to test post with many images. (5 yet only 4 will be allowed due to limit.)
 LOG_LEVEL=debug         # Set logging verbosity (debug, info, warn, error)
 MIN_DATE=2020-01-01     # Only import posts after this date
 MAX_DATE=2025-01-01     # Only import posts before this date
