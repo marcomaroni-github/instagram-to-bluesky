@@ -1,8 +1,8 @@
 import fs from "fs";
 
-import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor, decodeUTF8, getImageSize } from "./media";
+import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor, decodeUTF8 } from "./media";
+import { getImageSize } from "../image";
 import { InstagramExportedPost, VideoMedia, ImageMedia } from "./InstagramExportedPost";
-import { Ratio } from "./MediaProcessResult";
 
 // Mock the file system
 jest.mock("fs", () => ({
