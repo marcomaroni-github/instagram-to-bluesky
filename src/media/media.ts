@@ -5,9 +5,10 @@ import { logger } from '../logger/logger';
 import { getMimeType as getVideoMimeType, getVideoDimensions, validateVideo } from '../video/video';
 import { ImageMedia, InstagramExportedPost, Media, VideoMedia } from './InstagramExportedPost';
 import {
-    ImageMediaProcessResultImpl, MediaProcessResult, VideoMediaProcessResultImpl
+    ImageMediaProcessResultImpl, MediaProcessResult, Ratio, VideoMediaProcessResultImpl
 } from './MediaProcessResult';
 import { ProcessedPost, ProcessedPostImpl } from './ProcessedPost';
+import sharp from 'sharp';
 
 /**
  * @link https://docs.bsky.app/docs/advanced-guides/posts#:~:text=Each%20post%20contains%20up%20to,alt%20text%20and%20aspect%20ratio.
@@ -164,6 +165,7 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
     const fileType = media.uri.substring(media.uri.lastIndexOf(".") + 1);
     const mimeType = this.getMimeType(fileType);
     const mediaBuffer = getMediaBuffer(archiveFolder, media);
+    const aspectRatio = await getImageSize(`${archiveFolder}/${media.uri}`);
 
     let mediaText = media.title ?? "";
     if (
@@ -186,7 +188,8 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
     return new ImageMediaProcessResultImpl(
       truncatedText,
       mimeType,
-      mediaBuffer!
+      mediaBuffer!,
+      aspectRatio!
     );
   }
 }
@@ -323,6 +326,15 @@ export function getMediaBuffer(
   }
 
   return mediaBuffer;
+}
+
+export async function getImageSize(filePath: string): Promise<Ratio | null> {
+  let image = sharp(filePath);
+  const metadata = await image.metadata();
+  if( metadata.width != undefined && metadata.height != undefined)
+    return { width: metadata.width, height: metadata.height };
+  else
+    return null;
 }
 
 // New factory interface

@@ -9,9 +9,10 @@ import {
 } from './bluesky/index';
 import { AppConfig } from './config';
 import { logger } from './logger/logger';
-import { MediaProcessResult, VideoMediaProcessResultImpl } from './media';
+import { ImageMediaProcessResultImpl, MediaProcessResult, VideoMediaProcessResultImpl } from './media';
 import { InstagramExportedPost } from './media/InstagramExportedPost';
 import { decodeUTF8, InstagramMediaProcessor } from './media/media';
+import sharp from 'sharp';
 
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
@@ -69,13 +70,13 @@ export async function uploadMediaAndEmbed(
   for (const media of embeddedMedia) {
     try {
       if (media.getType() === "image") {
-        const { mediaBuffer, mimeType } = media;
+        const { mediaBuffer, mimeType, aspectRatio } = media as ImageMediaProcessResultImpl;
 
         const blobRef: BlobRef = await bluesky.uploadMedia(
           mediaBuffer!,
           mimeType!
         );
-        embeddedImages.push(new ImageEmbedImpl(postText, blobRef, mimeType!));
+        embeddedImages.push(new ImageEmbedImpl(postText, blobRef, mimeType!, aspectRatio));
         uploadedMedia = new ImagesEmbedImpl(embeddedImages);
       } else if (media.getType() === "video") {
         const { mediaBuffer, mimeType, aspectRatio } =

@@ -1,5 +1,4 @@
-import { AppBskyEmbedImages, BlobRef } from "@atproto/api";
-
+import { AppBskyEmbedDefs, AppBskyEmbedImages, BlobRef } from "@atproto/api";
 
 /**
  * Image uploaded to bluesky, containing BlobRef CID.
@@ -21,13 +20,15 @@ export class ImageEmbedImpl implements ImageEmbed {
   constructor(
     public alt: string,
     public image: BlobRef,
-    public mimeType: string
+    public mimeType: string,
+    public aspectRatio: AppBskyEmbedDefs.AspectRatio
   ) {}
 
   toJSON() {
     return {
       $type: this.$type,
       alt: this.alt,
+      aspectRatio: this.aspectRatio,
       image: this.image,
     };
   }
