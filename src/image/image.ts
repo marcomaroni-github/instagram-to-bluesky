@@ -109,10 +109,15 @@ export async function processImageBuffer(mediaBuffer: Buffer, filename: string):
 }
 
 export async function getImageSize(filePath: string): Promise<Ratio | null> {
-  let image = sharp(filePath);
-  const metadata = await image.metadata();
-  if( metadata.width != undefined && metadata.height != undefined)
-    return { width: metadata.width, height: metadata.height };
-  else
-    return null;
+  let ratio: Ratio | null = null;
+  try {
+    let image = sharp(filePath);
+    const metadata = await image.metadata();
+    if( metadata.width != undefined && metadata.height != undefined)
+      ratio = { width: metadata.width, height: metadata.height };
+  } catch (error) {
+    logger.error(`Failed to get image aspect ratio; image path: ${filePath}, error: ${error}`)
+  }
+
+  return ratio;
 }
