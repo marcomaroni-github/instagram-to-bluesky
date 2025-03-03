@@ -1,8 +1,8 @@
 import fs from "fs";
 
-import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor, decodeUTF8, getImageSize } from "./media";
+import { InstagramImageProcessor, InstagramMediaProcessor, InstagramVideoProcessor, decodeUTF8 } from "./media";
+import { getImageSize } from "../image";
 import { InstagramExportedPost, VideoMedia, ImageMedia } from "./InstagramExportedPost";
-import { Ratio } from "./MediaProcessResult";
 
 // Mock the file system
 jest.mock("fs", () => ({
@@ -75,6 +75,8 @@ jest.mock("../logger/logger", () => ({
   },
 }));
 
+
+// TODO breakdown into processors.test.ts or a test suite per processor instance.
 describe("Instagram Media Processing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -164,6 +166,42 @@ describe("Instagram Media Processing", () => {
       expect(result).toHaveLength(1);
       expect(result[0].postText.length).toBe(303); // 300 chars + "..."
       expect(result[0].postText.endsWith("...")).toBe(true);
+    });
+
+    test("should use media title if no post title is available", async () => {
+      // Create a post without a title property using type casting
+      const mockPost = {
+        creation_timestamp: 1458732736,
+        media: [
+          {
+            uri: "AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4",
+            creation_timestamp: 1458732736,
+            media_metadata: {
+              video_metadata: {
+                exif_data: [
+                  {
+                    latitude: 53.141186112,
+                    longitude: 11.038734576
+                  }
+                ]
+              }
+            },
+            title: "No filter needed. 😍🌱 #waterfall #nature",
+            cross_post_source: {
+              source_app: "FB"
+            },
+            backup_uri: "backup_video.mp4",
+            dubbing_info: [],
+            media_variants: []
+          } as VideoMedia],
+      } as InstagramExportedPost; // Cast to InstagramExportedPost without providing title
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].postText).toBe("No filter needed. 😍🌱 #waterfall #nature");
+      expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
     });
 
     test("should limit media to maximum allowed images", async () => {

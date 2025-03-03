@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import byteSize from "byte-size";
 import { logger } from "../logger/logger";
+import { Ratio } from "src/media";
 
 /**
  * Image lexicon maxSize 1mb
@@ -105,4 +106,13 @@ export async function processImageBuffer(mediaBuffer: Buffer, filename: string):
     });
     return null;
   }
-} 
+}
+
+export async function getImageSize(filePath: string): Promise<Ratio | null> {
+  let image = sharp(filePath);
+  const metadata = await image.metadata();
+  if( metadata.width != undefined && metadata.height != undefined)
+    return { width: metadata.width, height: metadata.height };
+  else
+    return null;
+}
