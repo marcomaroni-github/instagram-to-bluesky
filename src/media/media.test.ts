@@ -143,6 +143,126 @@ describe("Instagram Media Processing", () => {
       expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
     });
 
+    test("should process a post with mixed media (images and videos)", async () => {
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1720384531,
+        title: "What an incredible weekend day trip to celebrate Momma Olga's birthday.",
+        media: [
+          {
+            uri: "photo1.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup1.jpg",
+          } as ImageMedia,
+          {
+            uri: "photo2.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup2.jpg",
+          } as ImageMedia,
+          {
+            uri: "video1.mp4",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup_video1.mp4",
+            dubbing_info: [],
+            media_variants: [],
+          } as VideoMedia,
+          {
+            uri: "photo3.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup3.jpg",
+          } as ImageMedia,
+          {
+            uri: "photo4.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup4.jpg",
+          } as ImageMedia,
+          {
+            uri: "video2.mp4",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup_video2.mp4",
+            dubbing_info: [],
+            media_variants: [],
+          } as VideoMedia,
+          {
+            uri: "photo5.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup5.jpg",
+          } as ImageMedia,
+        ],
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      const result = await processor.process();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday.");
+      expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
+      expect(result[0].embeddedMedia).toHaveLength(7);
+      
+      // Verify media types in sequence
+      const expectedTypes = [
+        "image/jpeg",
+        "image/jpeg",
+        "video/mp4",
+        "image/jpeg",
+        "image/jpeg",
+        "video/mp4",
+        "image/jpeg"
+      ];
+      
+      result[0].embeddedMedia.forEach((media, index) => {
+        expect(media.mimeType).toBe(expectedTypes[index]);
+      });
+    });
+
     test("should truncate post title when it exceeds limit", async () => {
       const longTitle = "A".repeat(400); // Create a title longer than POST_TEXT_LIMIT (300)
       const mockPost: InstagramExportedPost = {
