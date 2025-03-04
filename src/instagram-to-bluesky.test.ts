@@ -24,9 +24,7 @@ jest.mock("../src/bluesky/bluesky", () => {
         mimeType: "image/jpeg",
         size: 1000,
       }),
-      createPost: jest
-        .fn()
-        .mockResolvedValue("https://bsky.app/profile/test/post/test"),
+      createPost: jest.fn().mockResolvedValue("https://bsky.app/profile/test/post/test"),
     })),
   };
 });
@@ -35,7 +33,12 @@ jest.mock("../src/media/media", () => {
     {
       postDate: new Date(),
       postText: "Test post",
-      embeddedMedia: [],
+      embeddedMedia: [{
+        getType: () => "image",
+        mediaBuffer: Buffer.from("test"),
+        mimeType: "image/jpeg",
+        mediaText: "Test media",
+      }],
       mediaCount: 1,
     },
   ]);
@@ -469,6 +472,23 @@ describe("Main App", () => {
 
     expect(logger.info).toHaveBeenCalledWith(
       expect.stringContaining("Estimated time for real import")
+    );
+  });
+
+  test("should inform user of imported posts and media in normal mode", async () => {
+    await main();
+    // Verify the final import log message
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringMatching(/Import finished at .+, imported 1 posts with 1 media/)
+    );
+  });
+
+  test("should inform user of imported posts and media in simulate mode", async () => {
+    process.env.SIMULATE = "1";
+    await main();
+    // Verify the final import log message
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringMatching(/Import finished at .+, imported 1 posts with 1 media/)
     );
   });
 
