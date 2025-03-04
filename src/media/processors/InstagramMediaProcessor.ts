@@ -1,6 +1,6 @@
 import { logger } from "../../logger/logger";
 import { ProcessedPost, ProcessedPostImpl } from "../ProcessedPost";
-import { InstagramExportedPost, Media } from "../InstagramExportedPost";
+import { InstagramExportedPost, Media, ImageMedia, VideoMedia } from "../InstagramExportedPost";
 import { InstagramPostProcessingStrategy } from "../interfaces/InstagramPostProcessingStrategy";
 import { MediaProcessorFactory } from "../interfaces/MediaProcessorFactory";
 import { DefaultMediaProcessorFactory } from "./DefaultMediaProcessorFactory";
@@ -20,54 +20,131 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
     this.mediaProcessorFactory = mediaProcessorFactory || new DefaultMediaProcessorFactory();
   }
 
+  private isVideoMedia(media: Media): media is VideoMedia {
+    return 'dubbing_info' in media;
+  }
+
+  private splitMediaByType(media: Media[]): { images: ImageMedia[], videos: VideoMedia[] } {
+    return media.reduce((acc, curr) => {
+      if (this.isVideoMedia(curr)) {
+        acc.videos.push(curr);
+      } else {
+        acc.images.push(curr as ImageMedia);
+      }
+      return acc;
+    }, { images: [] as ImageMedia[], videos: [] as VideoMedia[] });
+  }
+
+  private async createPostsFromMedia(
+    originalPost: InstagramExportedPost,
+    images: ImageMedia[],
+    videos: VideoMedia[]
+  ): Promise<ProcessedPost[]> {
+    const posts: ProcessedPost[] = [];
+    const timestamp = originalPost.creation_timestamp || originalPost.media[0].creation_timestamp;
+    const postDate = new Date(timestamp * 1000);
+    
+    // Split images into chunks of MAX_IMAGES_PER_POST
+    const imageChunks: ImageMedia[][] = [];
+    for (let i = 0; i < images.length; i += MAX_IMAGES_PER_POST) {
+      imageChunks.push(images.slice(i, i + MAX_IMAGES_PER_POST));
+    }
+
+    // Calculate total number of posts
+    const totalPosts = imageChunks.length + videos.length;
+    let currentPostNumber = 1;
+
+    // Create posts for image chunks
+    for (const imageChunk of imageChunks) {
+      let title = originalPost.title ?? originalPost.media[0].title ?? "";
+      
+      // Calculate the suffix that will be added
+      const suffix = totalPosts > 1 ? ` (Part ${currentPostNumber}/${totalPosts})` : "";
+      
+      // If we need to truncate, we need to account for the length of the suffix
+      if (title.length + suffix.length > POST_TEXT_LIMIT) {
+        const maxTitleLength = POST_TEXT_LIMIT - suffix.length - POST_TEXT_TRUNCATE_SUFFIX.length;
+        title = title.substring(0, maxTitleLength) + POST_TEXT_TRUNCATE_SUFFIX;
+      }
+      
+      // Add the suffix after truncation
+      if (totalPosts > 1) {
+        title += suffix;
+      }
+
+      const post = new ProcessedPostImpl(postDate, title);
+      const mediaProcessor = this.mediaProcessorFactory.createProcessor(
+        imageChunk as ImageMedia[],
+        this.archiveFolder
+      );
+      
+      // Process media for this post
+      post.embeddedMedia = await mediaProcessor.process();
+      posts.push(post);
+
+      currentPostNumber++;
+    }
+
+    // Create individual posts for each video
+    for (const video of videos) {
+      let title = originalPost.title ?? video.title ?? "";
+      
+      // Calculate the suffix that will be added
+      const suffix = totalPosts > 1 ? ` (Part ${currentPostNumber}/${totalPosts})` : "";
+      
+      // If we need to truncate, we need to account for the length of the suffix
+      if (title.length + suffix.length > POST_TEXT_LIMIT) {
+        const maxTitleLength = POST_TEXT_LIMIT - suffix.length - POST_TEXT_TRUNCATE_SUFFIX.length;
+        title = title.substring(0, maxTitleLength) + POST_TEXT_TRUNCATE_SUFFIX;
+      }
+      
+      // Add the suffix after truncation
+      if (totalPosts > 1) {
+        title += suffix;
+      }
+
+      const post = new ProcessedPostImpl(postDate, title);
+      const mediaProcessor = this.mediaProcessorFactory.createProcessor(
+        [video] as VideoMedia[],
+        this.archiveFolder
+      );
+      
+      // Process media for this post
+      post.embeddedMedia = await mediaProcessor.process();
+      posts.push(post);
+
+      currentPostNumber++;
+    }
+
+    return posts;
+  }
+
   /**
    * Processes Instagram posts and their associated media into a format
    * that can be easily mapped to Bluesky's requirements.
    * 
-   * This method iterates over each Instagram post, processes the media 
-   * (either images or videos), and returns a Promise that resolves to 
-   * an array of ProcessedPost objects once all media processing is complete.
+   * This method splits posts with mixed media into separate posts:
+   * - Images are grouped into posts of up to 4 images
+   * - Each video gets its own post
+   * - Posts are numbered when split (e.g. "Title (1/4)")
    * 
    * @returns {Promise<ProcessedPost[]>} A promise that resolves to an array of ProcessedPost objects.
    */
-  public process(): Promise<ProcessedPost[]> {
-    const processingPosts: Promise<ProcessedPost>[] = [];
+  public async process(): Promise<ProcessedPost[]> {
+    const allProcessedPosts: ProcessedPost[] = [];
     
     for (const post of this.instagramPosts) {
-      const timestamp = post.creation_timestamp || post.media[0].creation_timestamp;
-      const postDate = new Date(timestamp * 1000);
+      // Ensure media is always an array
+      const mediaArray = Array.isArray(post.media) ? post.media : [post.media];
       
-      // Truncate post title if it exceeds the limit
-      let title = post.title ?? post.media[0].title;
-      if (title && title.length > POST_TEXT_LIMIT) {
-        logger.info(`Truncating post title from ${title.length} to ${POST_TEXT_LIMIT} characters`);
-        title = title.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
-      }
-        
-      const processingPost = new ProcessedPostImpl(postDate, title);
+      // Split media by type
+      const { images, videos } = this.splitMediaByType(mediaArray);
       
-      // Limit media to MAX_IMAGES_PER_POST
-      let limitedMedia = post.media;
-      if (Array.isArray(post.media) && post.media.length > MAX_IMAGES_PER_POST) {
-        logger.info(`Limiting post media from ${post.media.length} to ${MAX_IMAGES_PER_POST} items`);
-        limitedMedia = post.media.slice(0, MAX_IMAGES_PER_POST);
-      }
-      
-      // Get appropriate strategy from factory
-      const mediaProcessor = this.mediaProcessorFactory.createProcessor(
-        limitedMedia,
-        this.archiveFolder
-      );
-      
-      // Process using the strategy
-      const processingMedia = mediaProcessor.process().then(processedMedia => {
-        processingPost.embeddedMedia = processedMedia;
-        return processingPost;
-      });
-
-      processingPosts.push(processingMedia);
+      // Create posts based on the split media
+      const posts = await this.createPostsFromMedia(post, images, videos);
+      allProcessedPosts.push(...posts);
     }
 
-    return Promise.all(processingPosts);
+    return allProcessedPosts;
   }
 } 

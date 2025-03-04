@@ -1,6 +1,6 @@
 import { MediaProcessorFactory } from "../interfaces/MediaProcessorFactory";
 import { ProcessStrategy } from "../interfaces/ProcessStrategy";
-import { Media, VideoMedia } from "../InstagramExportedPost";
+import { Media, VideoMedia, ImageMedia } from "../InstagramExportedPost";
 import { MediaProcessResult } from "../MediaProcessResult";
 import { InstagramImageProcessor } from "./InstagramImageProcessor";
 import { InstagramVideoProcessor } from "./InstagramVideoProcessor";
@@ -10,9 +10,9 @@ import { getMimeType as getVideoMimeType } from "../../video/video";
  * Processor factory that handles images and video.
  */
 export class DefaultMediaProcessorFactory implements MediaProcessorFactory {
-  createProcessor(media: Media | Media[], archiveFolder: string): ProcessStrategy<MediaProcessResult[]> {
-    if (Array.isArray(media) && !this.hasVideo(media)) {
-      return new InstagramImageProcessor(media, archiveFolder);
+  createProcessor(media: ImageMedia[] | VideoMedia[], archiveFolder: string): ProcessStrategy<MediaProcessResult[]> {
+    if (!this.hasVideo(media)) {
+      return new InstagramImageProcessor(media as ImageMedia[], archiveFolder);
     }
     return new InstagramVideoProcessor(media as VideoMedia[], archiveFolder);
   }

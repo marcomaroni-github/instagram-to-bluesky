@@ -242,25 +242,30 @@ describe("Instagram Media Processing", () => {
       const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
       const result = await processor.process();
 
-      expect(result).toHaveLength(1);
-      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday.");
-      expect(Array.isArray(result[0].embeddedMedia)).toBe(true);
-      expect(result[0].embeddedMedia).toHaveLength(7);
-      
-      // Verify media types in sequence
-      const expectedTypes = [
-        "image/jpeg",
-        "image/jpeg",
-        "video/mp4",
-        "image/jpeg",
-        "image/jpeg",
-        "video/mp4",
-        "image/jpeg"
-      ];
-      
-      result[0].embeddedMedia.forEach((media, index) => {
-        expect(media.mimeType).toBe(expectedTypes[index]);
+      // Should create 4 posts total
+      expect(result).toHaveLength(4);
+
+      // First post should have 4 images
+      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (1/4)");
+      expect(result[0].embeddedMedia).toHaveLength(4);
+      result[0].embeddedMedia.forEach(media => {
+        expect(media.mimeType).toBe("image/jpeg");
       });
+
+      // Second post should have 1 image
+      expect(result[1].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (2/4)");
+      expect(result[1].embeddedMedia).toHaveLength(1);
+      expect(result[1].embeddedMedia[0].mimeType).toBe("image/jpeg");
+
+      // Third post should have first video
+      expect(result[2].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (3/4)");
+      expect(result[2].embeddedMedia).toHaveLength(1);
+      expect(result[2].embeddedMedia[0].mimeType).toBe("video/mp4");
+
+      // Fourth post should have second video
+      expect(result[3].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (4/4)");
+      expect(result[3].embeddedMedia).toHaveLength(1);
+      expect(result[3].embeddedMedia[0].mimeType).toBe("video/mp4");
     });
 
     test("should truncate post title when it exceeds limit", async () => {
@@ -341,8 +346,147 @@ describe("Instagram Media Processing", () => {
       const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
       const result = await processor.process();
 
-      expect(result).toHaveLength(1);
-      expect(result[0].embeddedMedia).toHaveLength(4); // Should be limited to 4 images
+      // Should create 2 posts total
+      expect(result).toHaveLength(2);
+
+      // First post should have 4 images
+      expect(result[0].postText).toBe("Test Post with Many Images (1/2)");
+      expect(result[0].embeddedMedia).toHaveLength(4);
+      result[0].embeddedMedia.forEach(media => {
+        expect(media.mimeType).toBe("image/jpeg");
+      });
+
+      // Second post should have 2 images
+      expect(result[1].postText).toBe("Test Post with Many Images (2/2)");
+      expect(result[1].embeddedMedia).toHaveLength(2);
+      result[1].embeddedMedia.forEach(media => {
+        expect(media.mimeType).toBe("image/jpeg");
+      });
+    });
+
+    test("should split mixed media post into multiple posts based on media limits", async () => {
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1720384531,
+        title: "What an incredible weekend day trip to celebrate Momma Olga's birthday.",
+        media: [
+          {
+            uri: "photo1.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup1.jpg",
+          } as ImageMedia,
+          {
+            uri: "photo2.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup2.jpg",
+          } as ImageMedia,
+          {
+            uri: "photo3.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup3.jpg",
+          } as ImageMedia,
+          {
+            uri: "photo4.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup4.jpg",
+          } as ImageMedia,
+          {
+            uri: "photo5.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup5.jpg",
+          } as ImageMedia,
+          {
+            uri: "video1.mp4",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup_video1.mp4",
+            dubbing_info: [],
+            media_variants: [],
+          } as VideoMedia,
+          {
+            uri: "video2.mp4",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup_video2.mp4",
+            dubbing_info: [],
+            media_variants: [],
+          } as VideoMedia,
+        ],
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      const result = await processor.process();
+
+      // Should create 4 posts total
+      expect(result).toHaveLength(4);
+
+      // First post should have 4 images
+      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (1/4)");
+      expect(result[0].embeddedMedia).toHaveLength(4);
+      result[0].embeddedMedia.forEach(media => {
+        expect(media.mimeType).toBe("image/jpeg");
+      });
+
+      // Second post should have 1 image
+      expect(result[1].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (2/4)");
+      expect(result[1].embeddedMedia).toHaveLength(1);
+      expect(result[1].embeddedMedia[0].mimeType).toBe("image/jpeg");
+
+      // Third post should have first video
+      expect(result[2].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (3/4)");
+      expect(result[2].embeddedMedia).toHaveLength(1);
+      expect(result[2].embeddedMedia[0].mimeType).toBe("video/mp4");
+
+      // Fourth post should have second video
+      expect(result[3].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (4/4)");
+      expect(result[3].embeddedMedia).toHaveLength(1);
+      expect(result[3].embeddedMedia[0].mimeType).toBe("video/mp4");
     });
   });
 
@@ -419,12 +563,17 @@ describe("Instagram Media Processing", () => {
         media_metadata: {},
         cross_post_source: { source_app: "Instagram" },
         backup_uri: `backup${index + 1}.jpg`,
-      })); // Create 6 images, more than MAX_IMAGES_PER_POST (4)
+      }));
 
       const processor = new InstagramImageProcessor(mockImages, "/test/archive");
       const result = await processor.process();
 
-      expect(result).toHaveLength(4); // Should be limited to 4 images
+      // No longer limits images at this level
+      expect(result).toHaveLength(6);
+      result.forEach((media, index) => {
+        expect(media.mimeType).toBe("image/jpeg");
+        expect(media.mediaText).toBe(`Image ${index + 1}`);
+      });
     });
   });
 

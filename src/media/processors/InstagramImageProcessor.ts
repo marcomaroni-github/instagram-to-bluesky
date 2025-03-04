@@ -21,16 +21,9 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
 
   process(): Promise<MediaProcessResult[]> {
     const processingResults: Promise<MediaProcessResult>[] = [];
-    // Iterate over each image in the post,
-    // adding the process to the promise array.
-    // Limit to MAX_IMAGES_PER_POST
-    let limitedImages = this.instagramImages;
-    if (this.instagramImages.length > MAX_IMAGES_PER_POST) {
-      logger.info(`Limiting images from ${this.instagramImages.length} to ${MAX_IMAGES_PER_POST}`);
-      limitedImages = this.instagramImages.slice(0, MAX_IMAGES_PER_POST);
-    }
     
-    for (const media of limitedImages) {
+    // Process each image in the array (no need to limit here as that's handled by InstagramMediaProcessor)
+    for (const media of this.instagramImages) {
       const processedMedia = this.processMedia(media, this.archiveFolder);
       processingResults.push(processedMedia);
     }
