@@ -452,14 +452,20 @@ describe("getImageSize", () => {
     expect(result).toBeNull();
   });
 
-  test("should handle errors when file is missing", async () => {
-    try {
-      await getImageSize("/path/to/missing.jpg");
-      // If we reach here, the test should fail
-      expect(true).toBe(false);
-    } catch (error) {
-      expect(error).toBeDefined();
-      expect((error as Error).message).toContain("Input file is missing");
-    }
+  test("should log error when image processing fails", async () => {
+    // Import the logger mock
+    const { logger } = require("../logger/logger");
+    
+    // Call the function with a path that will trigger an error
+    const result = await getImageSize("/path/to/missing.jpg");
+    
+    // Verify the logger.error was called with the expected message pattern
+    expect(logger.error).toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringMatching(/Failed to get image aspect ratio; image path: \/path\/to\/missing\.jpg, error:/)
+    );
+    
+    // Verify the function returns null when an error occurs
+    expect(result).toBeNull();
   });
 });
