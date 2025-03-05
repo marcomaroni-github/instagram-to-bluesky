@@ -12,7 +12,6 @@ import { logger } from './logger/logger';
 import { ImageMediaProcessResultImpl, MediaProcessResult, VideoMediaProcessResultImpl } from './media';
 import { InstagramExportedPost } from './media/InstagramExportedPost';
 import { decodeUTF8, InstagramMediaProcessor } from './media/media';
-import sharp from 'sharp';
 
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
@@ -273,6 +272,7 @@ export async function main() {
       } else {
         // We are simulating the migration, incrementing posts to inform the user.
         importedPosts++;
+        importedMedia += embeddedMedia.length;
       }
 
       // Log the migrated instragram post.
