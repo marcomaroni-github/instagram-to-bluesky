@@ -488,6 +488,76 @@ describe("Instagram Media Processing", () => {
       expect(result[3].embeddedMedia).toHaveLength(1);
       expect(result[3].embeddedMedia[0].mimeType).toBe("video/mp4");
     });
+
+    test("should ensure split posts have different timestamps to prevent Bluesky duplicates", async () => {
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1720384531,
+        title: "Test post with multiple media",
+        media: [
+          {
+            uri: "photo1.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup1.jpg",
+          } as ImageMedia,
+          {
+            uri: "photo2.jpg",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup2.jpg",
+          } as ImageMedia,
+          {
+            uri: "video1.mp4",
+            title: "",
+            creation_timestamp: 1720384529,
+            media_metadata: {
+              camera_metadata: {
+                has_camera_metadata: false
+              }
+            },
+            cross_post_source: { source_app: "FB" },
+            backup_uri: "backup_video1.mp4",
+            dubbing_info: [],
+            media_variants: [],
+          } as VideoMedia,
+        ],
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      const result = await processor.process();
+
+      // Should create 2 posts (1 for images, 1 for video)
+      expect(result).toHaveLength(2);
+
+      // Verify timestamps are different and increment by 1 second
+      const baseTimestamp = result[0].postDate!.getTime();
+      for (let i = 1; i < result.length; i++) {
+        const currentTimestamp = result[i].postDate!.getTime();
+        const previousTimestamp = result[i-1].postDate!.getTime();
+        
+        // Each post should be 1 second after the previous
+        expect(currentTimestamp - previousTimestamp).toBe(1000);
+        
+        // Should be incrementally later than base timestamp
+        expect(currentTimestamp - baseTimestamp).toBe(i * 1000);
+      }
+
+      // Verify post numbering
+      expect(result[0].postText).toContain("(Part 1/2)");
+      expect(result[1].postText).toContain("(Part 2/2)");
+    });
   });
 
   describe("InstagramImageProcessor", () => {

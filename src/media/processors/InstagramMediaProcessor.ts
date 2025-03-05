@@ -42,7 +42,7 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
   ): Promise<ProcessedPost[]> {
     const posts: ProcessedPost[] = [];
     const timestamp = originalPost.creation_timestamp || originalPost.media[0].creation_timestamp;
-    const postDate = new Date(timestamp * 1000);
+    const basePostDate = new Date(timestamp * 1000);
     
     // Split images into chunks of MAX_IMAGES_PER_POST
     const imageChunks: ImageMedia[][] = [];
@@ -72,6 +72,8 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
         title += suffix;
       }
 
+      // Add a small time offset for each post (1 second)
+      const postDate = new Date(basePostDate.getTime() + (currentPostNumber - 1) * 1000);
       const post = new ProcessedPostImpl(postDate, title);
       const mediaProcessor = this.mediaProcessorFactory.createProcessor(
         imageChunk as ImageMedia[],
@@ -103,6 +105,8 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
         title += suffix;
       }
 
+      // Add a small time offset for each post (1 second)
+      const postDate = new Date(basePostDate.getTime() + (currentPostNumber - 1) * 1000);
       const post = new ProcessedPostImpl(postDate, title);
       const mediaProcessor = this.mediaProcessorFactory.createProcessor(
         [video] as VideoMedia[],

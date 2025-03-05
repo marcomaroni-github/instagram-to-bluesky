@@ -11,6 +11,7 @@ export class AppConfig {
   private readonly testVideoMode: boolean;
   private readonly testImageMode: boolean;
   private readonly testImagesMode: boolean;
+  private readonly testMixedMediaMode: boolean;
   private readonly simulate: boolean;
   private readonly minDate: Date | undefined;
   private readonly maxDate: Date | undefined;
@@ -22,6 +23,7 @@ export class AppConfig {
     testVideoMode: boolean;
     testImageMode: boolean;
     testImagesMode: boolean;
+    testMixedMediaMode: boolean;
     simulate: boolean;
     minDate?: Date;
     maxDate?: Date;
@@ -32,6 +34,7 @@ export class AppConfig {
     this.testVideoMode = config.testVideoMode;
     this.testImageMode = config.testImageMode;
     this.testImagesMode = config.testImagesMode;
+    this.testMixedMediaMode = config.testMixedMediaMode;
     this.simulate = config.simulate;
     this.minDate = config.minDate;
     this.maxDate = config.maxDate;
@@ -48,12 +51,13 @@ export class AppConfig {
       testVideoMode: process.env.TEST_VIDEO_MODE === '1',
       testImageMode: process.env.TEST_IMAGE_MODE === '1',
       testImagesMode: process.env.TEST_IMAGES_MODE === '1',
+      testMixedMediaMode: process.env.TEST_MIXED_MEDIA_MODE === '1',
       simulate: process.env.SIMULATE === '1',
       minDate: process.env.MIN_DATE ? new Date(process.env.MIN_DATE) : undefined,
       maxDate: process.env.MAX_DATE ? new Date(process.env.MAX_DATE) : undefined,
-      blueskyUsername: process.env.BLUESKY_USERNAME || '',
-      blueskyPassword: process.env.BLUESKY_PASSWORD || '',
-      archiveFolder: process.env.ARCHIVE_FOLDER || ''
+      blueskyUsername: process.env.BLUESKY_USERNAME ?? '',
+      blueskyPassword: process.env.BLUESKY_PASSWORD ?? '',
+      archiveFolder: process.env.ARCHIVE_FOLDER ?? ''
     });
   }
 
@@ -61,7 +65,7 @@ export class AppConfig {
    * Checks if any test mode is enabled
    */
   isTestModeEnabled(): boolean {
-    return this.testVideoMode || this.testImageMode || this.testImagesMode;
+    return this.testVideoMode || this.testImageMode || this.testImagesMode || this.testMixedMediaMode;
   }
 
   /**
@@ -108,6 +112,7 @@ export class AppConfig {
     if (this.testVideoMode) return path.join(rootDir, 'transfer/test_video');
     if (this.testImageMode) return path.join(rootDir, 'transfer/test_image');
     if (this.testImagesMode) return path.join(rootDir, 'transfer/test_images');
+    if (this.testMixedMediaMode) return path.join(rootDir, 'transfer/test_mixed_media');
     return this.archiveFolder;
   }
 
@@ -119,7 +124,8 @@ export class AppConfig {
     const enabledModes = Object.entries({
       testVideoMode: this.testVideoMode,
       testImageMode: this.testImageMode,
-      testImagesMode: this.testImagesMode
+      testImagesMode: this.testImagesMode,
+      testMixedMediaMode: this.testMixedMediaMode
     })
       .filter(([_, enabled]) => enabled)
       .map(([mode]) => mode);
