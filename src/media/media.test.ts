@@ -246,24 +246,24 @@ describe("Instagram Media Processing", () => {
       expect(result).toHaveLength(4);
 
       // First post should have 4 images
-      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (1/4)");
+      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 1/4)");
       expect(result[0].embeddedMedia).toHaveLength(4);
       result[0].embeddedMedia.forEach(media => {
         expect(media.mimeType).toBe("image/jpeg");
       });
 
       // Second post should have 1 image
-      expect(result[1].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (2/4)");
+      expect(result[1].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 2/4)");
       expect(result[1].embeddedMedia).toHaveLength(1);
       expect(result[1].embeddedMedia[0].mimeType).toBe("image/jpeg");
 
       // Third post should have first video
-      expect(result[2].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (3/4)");
+      expect(result[2].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 3/4)");
       expect(result[2].embeddedMedia).toHaveLength(1);
       expect(result[2].embeddedMedia[0].mimeType).toBe("video/mp4");
 
       // Fourth post should have second video
-      expect(result[3].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (4/4)");
+      expect(result[3].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 4/4)");
       expect(result[3].embeddedMedia).toHaveLength(1);
       expect(result[3].embeddedMedia[0].mimeType).toBe("video/mp4");
     });
@@ -289,7 +289,7 @@ describe("Instagram Media Processing", () => {
       const result = await processor.process();
 
       expect(result).toHaveLength(1);
-      expect(result[0].postText.length).toBe(303); // 300 chars + "..."
+      expect(result[0].postText.length).toBe(300); // 297 chars + "..."
       expect(result[0].postText.endsWith("...")).toBe(true);
     });
 
@@ -350,14 +350,14 @@ describe("Instagram Media Processing", () => {
       expect(result).toHaveLength(2);
 
       // First post should have 4 images
-      expect(result[0].postText).toBe("Test Post with Many Images (1/2)");
+      expect(result[0].postText).toBe("Test Post with Many Images (Part 1/2)");
       expect(result[0].embeddedMedia).toHaveLength(4);
       result[0].embeddedMedia.forEach(media => {
         expect(media.mimeType).toBe("image/jpeg");
       });
 
       // Second post should have 2 images
-      expect(result[1].postText).toBe("Test Post with Many Images (2/2)");
+      expect(result[1].postText).toBe("Test Post with Many Images (Part 2/2)");
       expect(result[1].embeddedMedia).toHaveLength(2);
       result[1].embeddedMedia.forEach(media => {
         expect(media.mimeType).toBe("image/jpeg");
@@ -467,24 +467,24 @@ describe("Instagram Media Processing", () => {
       expect(result).toHaveLength(4);
 
       // First post should have 4 images
-      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (1/4)");
+      expect(result[0].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 1/4)");
       expect(result[0].embeddedMedia).toHaveLength(4);
       result[0].embeddedMedia.forEach(media => {
         expect(media.mimeType).toBe("image/jpeg");
       });
 
       // Second post should have 1 image
-      expect(result[1].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (2/4)");
+      expect(result[1].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 2/4)");
       expect(result[1].embeddedMedia).toHaveLength(1);
       expect(result[1].embeddedMedia[0].mimeType).toBe("image/jpeg");
 
       // Third post should have first video
-      expect(result[2].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (3/4)");
+      expect(result[2].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 3/4)");
       expect(result[2].embeddedMedia).toHaveLength(1);
       expect(result[2].embeddedMedia[0].mimeType).toBe("video/mp4");
 
       // Fourth post should have second video
-      expect(result[3].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (4/4)");
+      expect(result[3].postText).toBe("What an incredible weekend day trip to celebrate Momma Olga's birthday. (Part 4/4)");
       expect(result[3].embeddedMedia).toHaveLength(1);
       expect(result[3].embeddedMedia[0].mimeType).toBe("video/mp4");
     });
@@ -551,7 +551,7 @@ describe("Instagram Media Processing", () => {
       const result = await processor.process();
 
       expect(result).toHaveLength(1);
-      expect(result[0].mediaText.length).toBe(303); // 300 chars + "..."
+      expect(result[0].mediaText.length).toBe(300); // 297 chars + "..."
       expect(result[0].mediaText.endsWith("...")).toBe(true);
     });
 

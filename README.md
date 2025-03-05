@@ -12,7 +12,7 @@ This utility reads an Instagram archive from your local disk and uses the offici
 
 - Imports photos and videos from Instagram posts
 - Preserves original post dates and captions
-- Supports importing up to 4 images per post (Bluesky limit)
+- Supports importing up to 4 images per post, splitting a post to incude all images and videos due to bluesky limits.
 - Test modes for verifying video and image imports
 - Simulation mode to estimate import time
 - Configurable date ranges for selective imports
