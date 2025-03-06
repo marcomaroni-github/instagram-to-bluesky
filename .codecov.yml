@@ -1,0 +1,42 @@
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "65...90"
+  status:
+    project:
+      default:
+        target: 65%
+        threshold: 2%
+        if_ci_failed: error
+    patch:
+      default:
+        target: 65%
+        threshold: 2%
+        if_ci_failed: error
+    changes: no
+
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: no
+
+ignore:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/test/**"
+  - "**/tests/**"
+  - "src/main.ts"
+  - "src/**/index.ts" 

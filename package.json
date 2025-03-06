@@ -13,6 +13,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "coverage": "jest --coverage --detectOpenHandles --forceExit",
+    "coverage:ci": "jest --coverage --ci --detectOpenHandles --forceExit && codecov",
+    "coverage:open": "npm run coverage && open coverage/lcov-report/index.html",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix"
   },
@@ -36,6 +39,7 @@
     "@types/node": "^22.10.10",
     "@typescript-eslint/eslint-plugin": "^8.26.0",
     "@typescript-eslint/parser": "^8.26.0",
+    "codecov": "^3.8.2",
     "eslint": "^9.21.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jest": "^28.11.0",
