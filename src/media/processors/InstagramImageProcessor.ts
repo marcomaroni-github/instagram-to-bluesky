@@ -1,15 +1,11 @@
-import { logger } from "../../logger/logger";
-import { ImageMediaProcessingStrategy } from "../interfaces/ImageMediaProcessingStrategy";
-import { ImageMedia, Media } from "../InstagramExportedPost";
-import { MediaProcessResult, ImageMediaProcessResultImpl } from "../MediaProcessResult";
 import { getImageMimeType, getImageSize } from "../../image";
+import { logger } from "../../logger/logger";
+import { ImageMedia, Media } from "../InstagramExportedPost";
+import { ImageMediaProcessingStrategy } from "../interfaces/ImageMediaProcessingStrategy";
+import { MediaProcessResult, ImageMediaProcessResultImpl } from "../MediaProcessResult";
 import { getMediaBuffer } from "../utils";
 
-/**
- * @link https://docs.bsky.app/docs/advanced-guides/posts#:~:text=Each%20post%20contains%20up%20to,alt%20text%20and%20aspect%20ratio.
- * "Each post contains up to four images, and each image can have its own alt text and aspect ratio."
- */
-const MAX_IMAGES_PER_POST = 4;
+
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
 
@@ -21,16 +17,9 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
 
   process(): Promise<MediaProcessResult[]> {
     const processingResults: Promise<MediaProcessResult>[] = [];
-    // Iterate over each image in the post,
-    // adding the process to the promise array.
-    // Limit to MAX_IMAGES_PER_POST
-    let limitedImages = this.instagramImages;
-    if (this.instagramImages.length > MAX_IMAGES_PER_POST) {
-      logger.info(`Limiting images from ${this.instagramImages.length} to ${MAX_IMAGES_PER_POST}`);
-      limitedImages = this.instagramImages.slice(0, MAX_IMAGES_PER_POST);
-    }
     
-    for (const media of limitedImages) {
+    // Process each image in the array (no need to limit here as that's handled by InstagramMediaProcessor)
+    for (const media of this.instagramImages) {
       const processedMedia = this.processMedia(media, this.archiveFolder);
       processingResults.push(processedMedia);
     }
@@ -73,7 +62,7 @@ export class InstagramImageProcessor implements ImageMediaProcessingStrategy {
     let truncatedText = mediaText;
     if (mediaText.length > POST_TEXT_LIMIT) {
       logger.info(`Truncating image caption from ${mediaText.length} to ${POST_TEXT_LIMIT} characters`);
-      truncatedText = mediaText.substring(0, POST_TEXT_LIMIT) + POST_TEXT_TRUNCATE_SUFFIX;
+      truncatedText = mediaText.substring(0, POST_TEXT_LIMIT- POST_TEXT_TRUNCATE_SUFFIX.length) + POST_TEXT_TRUNCATE_SUFFIX;
     }
 
     return new ImageMediaProcessResultImpl(

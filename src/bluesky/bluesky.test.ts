@@ -1,7 +1,6 @@
 import fs from 'fs';
 
 import { BlueskyClient } from './bluesky';
-
 import { ImagesEmbedImpl, VideoEmbedImpl } from './types/index';
 
 const TEST_VIDEO_PATH = './transfer/test_video/AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4';

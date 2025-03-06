@@ -12,7 +12,7 @@ This utility reads an Instagram archive from your local disk and uses the offici
 
 - Imports photos and videos from Instagram posts
 - Preserves original post dates and captions
-- Supports importing up to 4 images per post (Bluesky limit)
+- Supports importing up to 4 images per post, splitting a post to incude all images and videos due to bluesky limits.
 - Test modes for verifying video and image imports
 - Simulation mode to estimate import time
 - Configurable date ranges for selective imports
@@ -54,13 +54,14 @@ BLUESKY_PASSWORD=your-password
 ARCHIVE_FOLDER=c:/download/instagram-username-2025-XX-XX-hash
 
 # Optional settings
-SIMULATE=1                # Set to 1 to simulate import without posting
-TEST_VIDEO_MODE=0        # Set to 1 to test video imports
-TEST_IMAGE_MODE=0        # Set to 1 to test image imports
-TEST_IMAGES_MODE=0      # Set to 1 to test post with many images. (5 yet only 4 will be allowed due to limit.)
-LOG_LEVEL=debug         # Set logging verbosity (debug, info, warn, error)
+SIMULATE=1              # Set to 1 to simulate import without posting
+TEST_VIDEO_MODE=0       # Set to 1 to test video imports
+TEST_IMAGE_MODE=0       # Set to 1 to test image imports
+TEST_IMAGES_MODE=1      # 5 images in a post (all 4 should upload, plus a second post with 1)
+TEST_MIXED_MEDIA_MODE=0 # many images and videos, single post split into 5, with a total of 10 media uploaded.
 MIN_DATE=2020-01-01     # Only import posts after this date
 MAX_DATE=2025-01-01     # Only import posts before this date
+LOG_LEVEL=debug         # Set logging verbosity (debug, info, warn, error)
 ```
 
 ## Running the Import
@@ -72,10 +73,12 @@ You can run the script in two ways:
 
 ### Test Modes
 
-The project includes two test modes to verify imports:
+The project includes four test modes to verify imports:
 
 - `TEST_VIDEO_MODE`: Tests video import functionality
 - `TEST_IMAGE_MODE`: Tests image import functionality
+- `TEST_IMAGES_MODE`: Tests max image per post split functionality.
+- `TEST_MIXED_MEDIA_MODE`: Tests posts with video and image formats splitting content to match Bluesky's limitations.
 
 Enable these by setting the corresponding environment variable to 1. Note: You cannot enable both modes simultaneously.
 
@@ -92,6 +95,7 @@ This is recommended before running an actual import.
 ## Limitations
 
 - Maximum 4 images per post (Bluesky platform limit)
+    - Splits posts adding a postfix `(Part 1/4)` ensuring no data loss.
 - Maximum video size of 100MB
 - Rate limiting enforced between posts
 - Stories, and likes can not be imported.

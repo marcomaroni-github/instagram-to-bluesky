@@ -1,18 +1,26 @@
-import FS from 'fs';
-import path from 'path';
+import FS from "fs";
+import path from "path";
 
-import { BlobRef } from '@atproto/api';
+import { BlobRef } from "@atproto/api";
 
-import { BlueskyClient } from './bluesky/bluesky';
+import { BlueskyClient } from "./bluesky/bluesky";
 import {
-    EmbeddedMedia, ImageEmbed, ImageEmbedImpl, ImagesEmbedImpl, VideoEmbedImpl
-} from './bluesky/index';
-import { AppConfig } from './config';
-import { logger } from './logger/logger';
-import { ImageMediaProcessResultImpl, MediaProcessResult, VideoMediaProcessResultImpl } from './media';
-import { InstagramExportedPost } from './media/InstagramExportedPost';
-import { decodeUTF8, InstagramMediaProcessor } from './media/media';
-
+  EmbeddedMedia,
+  ImageEmbed,
+  ImageEmbedImpl,
+  ImagesEmbedImpl,
+  VideoEmbedImpl,
+} from "./bluesky/index";
+import { AppConfig } from "./config";
+import { logger } from "./logger/logger";
+import {
+  ImageMediaProcessResultImpl,
+  MediaProcessResult,
+  VideoMediaProcessResultImpl,
+  decodeUTF8,
+  InstagramMediaProcessor,
+  InstagramExportedPost,
+} from "./media";
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
 
@@ -30,23 +38,23 @@ export function calculateEstimatedTime(importedMedia: number): string {
 
 /**
  * Uploads media files to Bluesky and creates appropriate embed objects
- * 
+ *
  * This function processes an array of media files of the same type (either all images or all videos)
  * and uploads them to Bluesky's servers. For images, it collects them into a single ImagesEmbed object.
  * For videos, it creates a VideoEmbed object. If mixed media types are provided, only the first type
  * encountered will be processed.
- * 
+ *
  * @param postText - The text content of the post to be associated with the media
  * @param embeddedMedia - Array of media objects to be processed and uploaded (should be same type)
  * @param bluesky - The BlueskyClient instance used for uploading media
- * 
+ *
  * @returns {Promise<{
  *   importedMediaCount: number, // Number of successfully uploaded media files
  *   uploadedMedia: EmbeddedMedia | undefined // The final embed object for the post
  * }>}
- * 
+ *
  * @throws Will log but not throw errors from failed media uploads
- * 
+ *
  * @example
  * const result = await uploadMedia(
  *   "My vacation photos",
@@ -69,13 +77,16 @@ export async function uploadMediaAndEmbed(
   for (const media of embeddedMedia) {
     try {
       if (media.getType() === "image") {
-        const { mediaBuffer, mimeType, aspectRatio } = media as ImageMediaProcessResultImpl;
+        const { mediaBuffer, mimeType, aspectRatio } =
+          media as ImageMediaProcessResultImpl;
 
         const blobRef: BlobRef = await bluesky.uploadMedia(
           mediaBuffer!,
           mimeType!
         );
-        embeddedImages.push(new ImageEmbedImpl(postText, blobRef, mimeType!, aspectRatio));
+        embeddedImages.push(
+          new ImageEmbedImpl(postText, blobRef, mimeType!, aspectRatio)
+        );
         uploadedMedia = new ImagesEmbedImpl(embeddedImages);
       } else if (media.getType() === "video") {
         const { mediaBuffer, mimeType, aspectRatio } =
@@ -143,14 +154,14 @@ export async function main() {
   // Decide where to fetch post data to process from.
   let postsJsonPath: string;
   if (config.isTestModeEnabled()) {
-    postsJsonPath = path.join(archivalFolder, 'posts.json');
+    postsJsonPath = path.join(archivalFolder, "posts.json");
     logger.info(
       `--- TEST mode is enabled, using content from ${archivalFolder} ---`
     );
   } else {
     postsJsonPath = path.join(
       archivalFolder,
-      'your_instagram_activity/content/posts_1.json'
+      "your_instagram_activity/content/posts_1.json"
     );
   }
 
@@ -237,11 +248,8 @@ export async function main() {
         );
         try {
           // Upload all the embedded media
-          const { uploadedMedia, importedMediaCount } = await uploadMediaAndEmbed(
-            postText,
-            embeddedMedia,
-            bluesky
-          );
+          const { uploadedMedia, importedMediaCount } =
+            await uploadMediaAndEmbed(postText, embeddedMedia, bluesky);
           // Added uploaded media to the counter.
           importedMedia += importedMediaCount;
 
@@ -259,7 +267,7 @@ export async function main() {
               importedPosts++;
             }
           } else {
-            logger.warn('No media uploaded! Check Error logs.');
+            logger.warn("No media uploaded! Check Error logs.");
           }
         } catch (error) {
           logger.error(
