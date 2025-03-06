@@ -2,9 +2,11 @@ import { AppBskyFeedPost, Facet } from "@atproto/api";
 
 import { EmbeddedMedia } from "./EmbeddedMedia";
 
-export interface PostRecord extends Partial<AppBskyFeedPost.Record> {}
-
-export class PostRecordImpl implements PostRecord {
+/**
+ * Bluesky post
+ * @see AppBskyFeedPost.Record
+ */
+export class PostRecordImpl implements Partial<AppBskyFeedPost.Record> {
   readonly $type = "app.bsky.feed.post";
   [k: string]: unknown;
 

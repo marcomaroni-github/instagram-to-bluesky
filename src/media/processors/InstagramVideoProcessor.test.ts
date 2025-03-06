@@ -1,6 +1,7 @@
 import fs from "fs";
-import { VideoMedia } from "../InstagramExportedPost";
+
 import { InstagramVideoProcessor } from "..";
+import { VideoMedia } from "../InstagramExportedPost";
 
 // Mock the file system
 jest.mock("fs", () => ({

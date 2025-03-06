@@ -7,9 +7,10 @@ import {
   uploadMediaAndEmbed,
 } from "../src/instagram-to-bluesky";
 import { BlueskyClient } from "./bluesky/bluesky";
-import { logger } from "./logger/logger";
-import { InstagramMediaProcessor, ImageMediaProcessResultImpl, VideoMediaProcessResultImpl } from "./media";
 import { ImagesEmbedImpl, VideoEmbedImpl } from "./bluesky/index";
+import { logger } from "./logger/logger";
+import { InstagramMediaProcessor, ImageMediaProcessResultImpl } from "./media";
+
 import type { InstagramExportedPost } from "./media/InstagramExportedPost";
 
 // Mock all dependencies
@@ -581,7 +582,7 @@ describe("Main App", () => {
     // Mock BlueskyClient for tracking uploads
     const mockBlueskyClient = {
       login: jest.fn().mockResolvedValue(undefined),
-      uploadMedia: jest.fn().mockImplementation((_, __) => {
+      uploadMedia: jest.fn().mockImplementation(() => {
         return Promise.resolve({
           ref: `test-blob-ref-${mockBlueskyClient.uploadMedia.mock.calls.length}`,
           mimeType: "image/jpeg",

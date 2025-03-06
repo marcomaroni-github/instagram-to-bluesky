@@ -1,4 +1,5 @@
 import { getImageSize } from "./image";
+import { logger } from "../logger/logger";
 
 // Mock the file system
 jest.mock("fs", () => ({
@@ -70,9 +71,6 @@ describe("getImageSize", () => {
   });
 
   test("should log error when image processing fails", async () => {
-    // Import the logger mock
-    const { logger } = require("../logger/logger");
-
     // Call the function with a path that will trigger an error
     const result = await getImageSize("/path/to/missing.jpg");
 

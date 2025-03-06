@@ -5,6 +5,10 @@ import { InstagramPostProcessingStrategy } from "../interfaces/InstagramPostProc
 import { MediaProcessorFactory } from "../interfaces/MediaProcessorFactory";
 import { ProcessedPost, ProcessedPostImpl } from "../ProcessedPost";
 
+/**
+ * @link https://docs.bsky.app/docs/advanced-guides/posts#:~:text=Each%20post%20contains%20up%20to,alt%20text%20and%20aspect%20ratio.
+ * "Each post contains up to four images, and each image can have its own alt text and aspect ratio."
+ */
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";

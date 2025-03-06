@@ -1,5 +1,6 @@
-import { validateVideo, getVideoDimensions } from './video';
 import ffmpeg from 'fluent-ffmpeg';
+
+import { validateVideo, getVideoDimensions } from './video';
 
 // Mock ffmpeg
 jest.mock('fluent-ffmpeg', () => {

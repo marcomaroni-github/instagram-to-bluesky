@@ -1,4 +1,5 @@
 import fs from "fs";
+
 import { InstagramMediaProcessor } from "./InstagramMediaProcessor";
 import { InstagramExportedPost, VideoMedia, ImageMedia } from "../InstagramExportedPost";
 
