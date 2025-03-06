@@ -1,8 +1,8 @@
 import { logger } from "../../logger/logger";
-import { VideoMediaProcessingStrategy } from "../interfaces/VideoMediaProcessingStrategy";
-import { VideoMedia } from "../InstagramExportedPost";
-import { MediaProcessResult, VideoMediaProcessResultImpl } from "../MediaProcessResult";
 import { getVideoDimensions, getMimeType as getVideoMimeType, validateVideo } from "../../video/video";
+import { VideoMedia } from "../InstagramExportedPost";
+import { VideoMediaProcessingStrategy } from "../interfaces/VideoMediaProcessingStrategy";
+import { MediaProcessResult, VideoMediaProcessResultImpl } from "../MediaProcessResult";
 import { getMediaBuffer } from "../utils";
 
 const POST_TEXT_LIMIT = 300;

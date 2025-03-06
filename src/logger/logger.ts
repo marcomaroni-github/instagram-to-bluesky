@@ -1,5 +1,5 @@
-import { pino } from 'pino';
 import * as dotenv from 'dotenv';
+import { pino } from 'pino';
 
 // Get env varables from .env
 dotenv.config();

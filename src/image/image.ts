@@ -1,5 +1,6 @@
-import sharp from "sharp";
 import byteSize from "byte-size";
+import sharp from "sharp";
+
 import { logger } from "../logger/logger";
 import { Ratio } from "../media";
 

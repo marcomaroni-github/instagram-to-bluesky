@@ -1,10 +1,10 @@
-import { MediaProcessorFactory } from "../interfaces/MediaProcessorFactory";
-import { ProcessStrategy } from "../interfaces/ProcessStrategy";
 import { Media, VideoMedia, ImageMedia } from "../InstagramExportedPost";
 import { MediaProcessResult } from "../MediaProcessResult";
 import { InstagramImageProcessor } from "./InstagramImageProcessor";
 import { InstagramVideoProcessor } from "./InstagramVideoProcessor";
 import { getMimeType as getVideoMimeType } from "../../video/video";
+import { MediaProcessorFactory } from "../interfaces/MediaProcessorFactory";
+import { ProcessStrategy } from "../interfaces/ProcessStrategy";
 
 /**
  * Processor factory that handles images and video.

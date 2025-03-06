@@ -4,12 +4,12 @@ import {
   BlobRef
 } from "@atproto/api";
 
-import { logger } from "../logger/logger";
-
 import {
   EmbeddedMedia,
   PostRecordImpl
 } from "./types";
+import { logger } from "../logger/logger";
+
 
 
 export class BlueskyClient {

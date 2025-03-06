@@ -1,5 +1,5 @@
-import { ProcessStrategy } from './ProcessStrategy';
 import { MIMEType } from './MIMEType';
+import { ProcessStrategy } from './ProcessStrategy';
 import { MediaProcessResult } from '../MediaProcessResult';
 
 /**

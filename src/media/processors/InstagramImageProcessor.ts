@@ -1,8 +1,8 @@
-import { logger } from "../../logger/logger";
-import { ImageMediaProcessingStrategy } from "../interfaces/ImageMediaProcessingStrategy";
-import { ImageMedia, Media } from "../InstagramExportedPost";
-import { MediaProcessResult, ImageMediaProcessResultImpl } from "../MediaProcessResult";
 import { getImageMimeType, getImageSize } from "../../image";
+import { logger } from "../../logger/logger";
+import { ImageMedia, Media } from "../InstagramExportedPost";
+import { ImageMediaProcessingStrategy } from "../interfaces/ImageMediaProcessingStrategy";
+import { MediaProcessResult, ImageMediaProcessResultImpl } from "../MediaProcessResult";
 import { getMediaBuffer } from "../utils";
 
 /**

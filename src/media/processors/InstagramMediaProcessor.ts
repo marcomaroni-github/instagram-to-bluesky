@@ -1,9 +1,9 @@
 import { logger } from "../../logger/logger";
-import { ProcessedPost, ProcessedPostImpl } from "../ProcessedPost";
 import { InstagramExportedPost, Media, ImageMedia, VideoMedia } from "../InstagramExportedPost";
+import { DefaultMediaProcessorFactory } from "./DefaultMediaProcessorFactory";
 import { InstagramPostProcessingStrategy } from "../interfaces/InstagramPostProcessingStrategy";
 import { MediaProcessorFactory } from "../interfaces/MediaProcessorFactory";
-import { DefaultMediaProcessorFactory } from "./DefaultMediaProcessorFactory";
+import { ProcessedPost, ProcessedPostImpl } from "../ProcessedPost";
 
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;

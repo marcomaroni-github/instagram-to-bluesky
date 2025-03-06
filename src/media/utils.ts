@@ -1,6 +1,7 @@
 import FS from "fs";
-import { logger } from "../logger/logger";
+
 import { Media } from "./InstagramExportedPost";
+import { logger } from "../logger/logger";
 
 /**
  * Decode JSON Data into an Object.

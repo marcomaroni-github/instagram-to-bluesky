@@ -1,6 +1,6 @@
 import { ProcessStrategy } from './ProcessStrategy';
-import { MediaProcessResult } from '../MediaProcessResult';
 import { Media, ImageMedia, VideoMedia } from '../InstagramExportedPost';
+import { MediaProcessResult } from '../MediaProcessResult';
 
 export interface MediaProcessorFactory {
   createProcessor(media: ImageMedia[] | VideoMedia[], archiveFolder: string): ProcessStrategy<MediaProcessResult[]>;
