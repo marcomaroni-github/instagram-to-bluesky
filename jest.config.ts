@@ -10,5 +10,13 @@ export default {
         tsconfig: 'tsconfig.jest.json'
       }
     ]
-  }
+  },
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov'],
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx,ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/*.test.{js,jsx,ts,tsx}'
+  ]
 }; 
