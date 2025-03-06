@@ -1,5 +1,6 @@
-import ffmpeg from "fluent-ffmpeg";
 import ffprobe from "@ffprobe-installer/ffprobe";
+import ffmpeg from "fluent-ffmpeg";
+
 import { logger } from "../logger/logger";
 import { Ratio } from "../media";
 // Configure ffmpeg to use ffprobe

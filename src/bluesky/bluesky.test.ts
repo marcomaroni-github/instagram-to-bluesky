@@ -1,11 +1,10 @@
 import fs from 'fs';
 
 import { BlueskyClient } from './bluesky';
-
 import { ImagesEmbedImpl, VideoEmbedImpl } from './types/index';
 
-const TEST_VIDEO_PATH = './transfer/test_videos/AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4';
-const TEST_IMAGE_PATH = './transfer/test_images/454093999_1240420453752667_4632794683080840290_n_18047065138879510.jpg'
+const TEST_VIDEO_PATH = './transfer/test_video/AQM8KYlOYHTF5GlP43eMroHUpmnFHJh5CnCJUdRUeqWxG4tNX7D43eM77F152vfi4znTzgkFTTzzM4nHa_v8ugmP4WPRJtjKPZX5pko_17845940218109367.mp4';
+const TEST_IMAGE_PATH = './transfer/test_image/454093999_1240420453752667_4632794683080840290_n_18047065138879510.jpg'
 jest.mock('@atproto/api', () => ({
   AtpAgent: jest.fn().mockImplementation(() => ({
     login: jest.fn(),

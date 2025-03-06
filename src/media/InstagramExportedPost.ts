@@ -43,7 +43,7 @@ interface BaseMedia extends CreationTimestamp {
   backup_uri: string;
 }
 
-export interface ImageMedia extends BaseMedia {}
+export type ImageMedia = BaseMedia
 
 export interface VideoMedia extends BaseMedia {
   dubbing_info: any[];
