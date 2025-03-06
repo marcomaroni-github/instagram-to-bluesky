@@ -9,6 +9,7 @@ const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
 
+// TODO log split in debug.
 export class InstagramMediaProcessor implements InstagramPostProcessingStrategy {
   readonly mediaProcessorFactory: MediaProcessorFactory;
 

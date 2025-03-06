@@ -6,16 +6,15 @@ import {
   calculateEstimatedTime,
   uploadMediaAndEmbed,
 } from "../src/instagram-to-bluesky";
-import { BlueskyClient } from "../src/bluesky/bluesky";
-import { logger } from "../src/logger/logger";
-import { InstagramMediaProcessor } from "../src/media/media";
-import { ImagesEmbedImpl, VideoEmbedImpl } from "../src/bluesky/index";
-import type { InstagramExportedPost } from "../src/media/InstagramExportedPost";
-import { ImageMediaProcessResultImpl } from "./media";
+import { BlueskyClient } from "./bluesky/bluesky";
+import { logger } from "./logger/logger";
+import { InstagramMediaProcessor, ImageMediaProcessResultImpl, VideoMediaProcessResultImpl } from "./media";
+import { ImagesEmbedImpl, VideoEmbedImpl } from "./bluesky/index";
+import type { InstagramExportedPost } from "./media/InstagramExportedPost";
 
 // Mock all dependencies
 jest.mock("fs");
-jest.mock("../src/bluesky/bluesky", () => {
+jest.mock("./bluesky/bluesky", () => {
   return {
     BlueskyClient: jest.fn().mockImplementation(() => ({
       login: jest.fn().mockResolvedValue(undefined),
@@ -28,7 +27,8 @@ jest.mock("../src/bluesky/bluesky", () => {
     })),
   };
 });
-jest.mock("../src/media/media", () => {
+jest.mock("./media", () => {
+  const actual = jest.requireActual("./media")
   const mockProcess = jest.fn().mockResolvedValue([
     {
       postDate: new Date(),
@@ -65,6 +65,8 @@ jest.mock("../src/media/media", () => {
         process: mockProcess,
       })),
     decodeUTF8: jest.fn((x) => x),
+    ImageMediaProcessResultImpl: actual.ImageMediaProcessResultImpl,
+    VideoMediaProcessResultImpl: actual.VideoMediaProcessResultImpl
   };
 });
 jest.mock("../src/logger/logger", () => ({

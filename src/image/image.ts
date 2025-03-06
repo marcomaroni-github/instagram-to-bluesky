@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import byteSize from "byte-size";
 import { logger } from "../logger/logger";
-import { Ratio } from "src/media";
+import { Ratio } from "../media";
 
 /**
  * Image lexicon maxSize 1mb
