@@ -2,6 +2,7 @@ import fs from "fs";
 
 import { InstagramMediaProcessor } from "./InstagramMediaProcessor";
 import { InstagramExportedPost, VideoMedia, ImageMedia } from "../InstagramExportedPost";
+import { logger } from "../../logger/logger";
 
 // Mock the file system
 jest.mock("fs", () => ({
@@ -554,5 +555,222 @@ describe("InstagramMediaProcessor", () => {
       // Verify post numbering
       expect(result[0].postText).toContain("(Part 1/2)");
       expect(result[1].postText).toContain("(Part 2/2)");
+    });
+
+    test("should log debug messages when splitting media", async () => {
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1234567890,
+        title: "Test Mixed Media Post",
+        media: [
+          {
+            uri: "photo1.jpg",
+            title: "Image 1",
+            creation_timestamp: 1234567890,
+            media_metadata: {},
+            cross_post_source: { source_app: "Instagram" },
+            backup_uri: "backup1.jpg",
+          } as ImageMedia,
+          {
+            uri: "video1.mp4",
+            title: "Video 1",
+            creation_timestamp: 1234567890,
+            media_metadata: {},
+            cross_post_source: { source_app: "Instagram" },
+            backup_uri: "backup_video1.mp4",
+            dubbing_info: [],
+            media_variants: [],
+          } as VideoMedia,
+        ],
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      await processor.process();
+
+      // Verify overall process start logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        "Starting to process 1 Instagram posts"
+      );
+
+      // Verify individual post processing start
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Mixed Media Post",
+          timestamp: 1234567890,
+          mediaCount: 2,
+          firstMediaUri: "photo1.jpg"
+        },
+        "Processing Instagram post"
+      );
+
+      // Verify initial split logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        "Starting to split 2 media items by type"
+      );
+
+      // Verify split complete logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          totalMedia: 2,
+          images: 1,
+          videos: 1
+        },
+        "Media split complete"
+      );
+
+      // Verify post creation start logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Mixed Media Post",
+          imageCount: 1,
+          videoCount: 1,
+          firstMediaUri: "photo1.jpg"
+        },
+        "Starting to create posts from media"
+      );
+
+      // Verify post distribution logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Mixed Media Post",
+          imageChunks: 1,
+          totalPosts: 2,
+          firstMediaUri: "photo1.jpg"
+        },
+        "Calculated post distribution"
+      );
+
+      // Verify image post creation logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Mixed Media Post",
+          postNumber: 1,
+          totalPosts: 2,
+          type: "image",
+          imageCount: 1,
+          postDate: expect.any(String),
+          mediaUris: ["photo1.jpg"]
+        },
+        "Created image post"
+      );
+
+      // Verify video post creation logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Mixed Media Post",
+          postNumber: 2,
+          totalPosts: 2,
+          type: "video",
+          postDate: expect.any(String),
+          mediaUri: "video1.mp4"
+        },
+        "Created video post"
+      );
+
+      // Verify individual post completion logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Mixed Media Post",
+          resultingPosts: 2,
+          imageCount: 1,
+          videoCount: 1,
+          firstMediaUri: "photo1.jpg"
+        },
+        "Finished processing Instagram post"
+      );
+
+      // Verify final summary logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          totalInputPosts: 1,
+          totalOutputPosts: 2
+        },
+        "Completed processing all Instagram posts"
+      );
+    });
+
+    test("should log debug messages for single image post", async () => {
+      const mockPost: InstagramExportedPost = {
+        creation_timestamp: 1234567890,
+        title: "Test Single Image Post",
+        media: [
+          {
+            uri: "photo1.jpg",
+            title: "Image 1",
+            creation_timestamp: 1234567890,
+            media_metadata: {},
+            cross_post_source: { source_app: "Instagram" },
+            backup_uri: "backup1.jpg",
+          } as ImageMedia,
+        ],
+      };
+
+      const processor = new InstagramMediaProcessor([mockPost], mockArchiveFolder);
+      await processor.process();
+
+      // Verify overall process start logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        "Starting to process 1 Instagram posts"
+      );
+
+      // Verify individual post processing start
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Single Image Post",
+          timestamp: 1234567890,
+          mediaCount: 1,
+          firstMediaUri: "photo1.jpg"
+        },
+        "Processing Instagram post"
+      );
+
+      // Verify initial split logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        "Starting to split 1 media items by type"
+      );
+
+      // Verify split complete logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          totalMedia: 1,
+          images: 1,
+          videos: 0
+        },
+        "Media split complete"
+      );
+
+      // Verify single post creation logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Single Image Post",
+          postNumber: 1,
+          totalPosts: 1,
+          type: "image",
+          imageCount: 1,
+          postDate: expect.any(String),
+          mediaUris: ["photo1.jpg"]
+        },
+        "Created image post"
+      );
+
+      // Verify individual post completion logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          title: "Test Single Image Post",
+          resultingPosts: 1,
+          imageCount: 1,
+          videoCount: 0,
+          firstMediaUri: "photo1.jpg"
+        },
+        "Finished processing Instagram post"
+      );
+
+      // Verify final summary logging
+      expect(logger.debug).toHaveBeenCalledWith(
+        {
+          totalInputPosts: 1,
+          totalOutputPosts: 1
+        },
+        "Completed processing all Instagram posts"
+      );
     });
   });

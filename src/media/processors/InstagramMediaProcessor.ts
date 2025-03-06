@@ -13,7 +13,6 @@ const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
 
-// TODO log split in debug.
 export class InstagramMediaProcessor implements InstagramPostProcessingStrategy {
   readonly mediaProcessorFactory: MediaProcessorFactory;
 
@@ -30,7 +29,9 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
   }
 
   private splitMediaByType(media: Media[]): { images: ImageMedia[], videos: VideoMedia[] } {
-    return media.reduce((acc, curr) => {
+    logger.debug(`Starting to split ${media.length} media items by type`);
+    
+    const result = media.reduce((acc, curr) => {
       if (this.isVideoMedia(curr)) {
         acc.videos.push(curr);
       } else {
@@ -38,6 +39,14 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
       }
       return acc;
     }, { images: [] as ImageMedia[], videos: [] as VideoMedia[] });
+
+    logger.debug({
+      totalMedia: media.length,
+      images: result.images.length,
+      videos: result.videos.length
+    }, 'Media split complete');
+
+    return result;
   }
 
   private async createPostsFromMedia(
@@ -45,6 +54,14 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
     images: ImageMedia[],
     videos: VideoMedia[]
   ): Promise<ProcessedPost[]> {
+    const postTitle = originalPost.title || originalPost.media[0]?.title || 'Untitled post';
+    logger.debug({
+      title: postTitle,
+      imageCount: images.length,
+      videoCount: videos.length,
+      firstMediaUri: originalPost.media[0]?.uri
+    }, 'Starting to create posts from media');
+
     const posts: ProcessedPost[] = [];
     const timestamp = originalPost.creation_timestamp || originalPost.media[0].creation_timestamp;
     const basePostDate = new Date(timestamp * 1000);
@@ -57,6 +74,13 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
 
     // Calculate total number of posts
     const totalPosts = imageChunks.length + videos.length;
+    logger.debug({
+      title: postTitle,
+      imageChunks: imageChunks.length,
+      totalPosts,
+      firstMediaUri: originalPost.media[0]?.uri
+    }, 'Calculated post distribution');
+
     let currentPostNumber = 1;
 
     // Create posts for image chunks
@@ -88,6 +112,16 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
       // Process media for this post
       post.embeddedMedia = await mediaProcessor.process();
       posts.push(post);
+
+      logger.debug({
+        title: postTitle,
+        postNumber: currentPostNumber,
+        totalPosts,
+        type: 'image',
+        imageCount: imageChunk.length,
+        postDate: postDate.toISOString(),
+        mediaUris: imageChunk.map(img => img.uri)
+      }, 'Created image post');
 
       currentPostNumber++;
     }
@@ -122,8 +156,23 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
       post.embeddedMedia = await mediaProcessor.process();
       posts.push(post);
 
+      logger.debug({
+        title: postTitle,
+        postNumber: currentPostNumber,
+        totalPosts,
+        type: 'video',
+        postDate: postDate.toISOString(),
+        mediaUri: video.uri
+      }, 'Created video post');
+
       currentPostNumber++;
     }
+
+    logger.debug({
+      title: postTitle,
+      totalPostsCreated: posts.length,
+      firstMediaUri: originalPost.media[0]?.uri
+    }, 'Finished creating all posts for media');
 
     return posts;
   }
@@ -142,7 +191,18 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
   public async process(): Promise<ProcessedPost[]> {
     const allProcessedPosts: ProcessedPost[] = [];
     
+    logger.debug(`Starting to process ${this.instagramPosts.length} Instagram posts`);
+    
     for (const post of this.instagramPosts) {
+      const postTitle = post.title || post.media[0]?.title || 'Untitled post';
+      // Log the start of processing for this specific post
+      logger.debug({
+        title: postTitle,
+        timestamp: post.creation_timestamp,
+        mediaCount: Array.isArray(post.media) ? post.media.length : 1,
+        firstMediaUri: post.media[0]?.uri
+      }, 'Processing Instagram post');
+
       // Ensure media is always an array
       const mediaArray = Array.isArray(post.media) ? post.media : [post.media];
       
@@ -152,7 +212,21 @@ export class InstagramMediaProcessor implements InstagramPostProcessingStrategy 
       // Create posts based on the split media
       const posts = await this.createPostsFromMedia(post, images, videos);
       allProcessedPosts.push(...posts);
+
+      // Log completion of this post's processing
+      logger.debug({
+        title: postTitle,
+        resultingPosts: posts.length,
+        imageCount: images.length,
+        videoCount: videos.length,
+        firstMediaUri: post.media[0]?.uri
+      }, 'Finished processing Instagram post');
     }
+
+    logger.debug({
+      totalInputPosts: this.instagramPosts.length,
+      totalOutputPosts: allProcessedPosts.length
+    }, 'Completed processing all Instagram posts');
 
     return allProcessedPosts;
   }
