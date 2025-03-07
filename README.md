@@ -1,10 +1,9 @@
-# Instagram To Bluesky
+# Instagram To Bluesky [![codecov](https://codecov.io/gh/marcomaroni-github/instagram-to-bluesky/branch/main/graph/badge.svg)](https://codecov.io/gh/marcomaroni-github/instagram-to-bluesky)
 
 Import posts exported from Instagram to a Bluesky account.
 
 This utility reads an Instagram archive from your local disk and uses the official Bluesky TypeScript SDK to import posts into your configured Bluesky account.
 
-[![codecov](https://codecov.io/gh/marcomaroni-github/instagram-to-bluesky/branch/main/graph/badge.svg)](https://codecov.io/gh/marcomaroni-github/instagram-to-bluesky)
 
 [**An example of an account used to import posts from Instagram**](https://bsky.app/profile/mm-instagram-arch.bsky.social)
 
