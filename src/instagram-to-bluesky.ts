@@ -153,8 +153,10 @@ export async function main() {
 
   // Decide where to fetch post data to process from.
   let postsJsonPath: string;
+  let reelsJsonPath: string;
   if (config.isTestModeEnabled()) {
     postsJsonPath = path.join(archivalFolder, "posts.json");
+    reelsJsonPath = path.join(archivalFolder, "reels.json");
     logger.info(
       `--- TEST mode is enabled, using content from ${archivalFolder} ---`
     );
@@ -163,15 +165,21 @@ export async function main() {
       archivalFolder,
       "your_instagram_activity/content/posts_1.json"
     );
+    reelsJsonPath = path.join(
+      archivalFolder,
+      "your_instagram_activity/content/reels.json"
+    );
   }
 
   // Read instagram posts JSON file as raw buffer data.
   const instaPostsFileBuffer: Buffer = FS.readFileSync(postsJsonPath);
+  const instaReelsFileBuffer: Buffer = FS.readFileSync(reelsJsonPath);
 
   // Decode raw JSON data into an object.
-  const allInstaPosts: InstagramExportedPost[] = decodeUTF8(
-    JSON.parse(instaPostsFileBuffer.toString())
-  );
+  const allInstaPosts: InstagramExportedPost[] = decodeUTF8([].concat(
+    JSON.parse(instaPostsFileBuffer.toString()),
+    JSON.parse(instaReelsFileBuffer.toString())['ig_reels_media']
+  ));
 
   // Initialize counters for posts and media.
   let importedPosts = 0;
