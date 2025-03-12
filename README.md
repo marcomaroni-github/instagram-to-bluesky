@@ -97,11 +97,13 @@ This is recommended before running an actual import.
 
 ## Limitations
 
-- Maximum 4 images per post (Bluesky platform limit)
+- Maximum 4 images per post (Bluesky platform limit).
     - Splits posts adding a postfix `(Part 1/4)` ensuring no data loss.
-- Maximum video size of 100MB
-- Rate limiting enforced between posts
+- Maximum video size of 100MB.
+- Rate limiting enforced between posts.
 - Stories, and likes can not be imported.
+- Mentions with URLs like @example.com will fail.
+    - BlueSky Facets autodetects a possible self hosted PDS handle but fails to find it.
 
 ## Additional Resources
 
