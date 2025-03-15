@@ -72,6 +72,8 @@ You can run the script in two ways:
 - Standard output: `npm start`
 - With logging to file: `npm run start_log`
 
+> Please note re-running an import will result in duplicates that will not display since BlueSky deduplicates via creation timestamp but will increment the post count. Please see [additional resources](#additional-resources) for a community suggested tool for deleting precvious migrations.
+
 ### Test Modes
 
 The project includes four test modes to verify imports:
@@ -95,11 +97,17 @@ This is recommended before running an actual import.
 
 ## Limitations
 
-- Maximum 4 images per post (Bluesky platform limit)
+- Maximum 4 images per post (Bluesky platform limit).
     - Splits posts adding a postfix `(Part 1/4)` ensuring no data loss.
-- Maximum video size of 100MB
-- Rate limiting enforced between posts
+- Maximum video size of 100MB.
+- Rate limiting enforced between posts.
 - Stories, and likes can not be imported.
+- Mentions with URLs like @example.com will fail.
+    - BlueSky Facets autodetects a possible self hosted PDS handle but fails to find it.
+
+## Additional Resources
+
+[BlueSky Post deleter web application](https://deleter.shiroyama.us/) `*Use at your own risk*`
 
 ## License
 
