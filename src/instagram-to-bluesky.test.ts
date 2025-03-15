@@ -100,6 +100,15 @@ jest.mock("../src/video", () => ({
 describe("Main App", () => {
   const originalEnv = process.env;
 
+  const mockReadFileSync = (mockValue) => {
+    return (path) => {
+      if (path.endsWith('reels.json')) {
+        return JSON.stringify({"ig_reels_media": mockValue})
+      }
+      return JSON.stringify(mockValue)
+    }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -114,20 +123,19 @@ describe("Main App", () => {
     };
 
     // Setup default mocks
-    (fs.readFileSync as jest.Mock).mockReturnValue(
-      JSON.stringify([
-        {
-          creation_timestamp: Date.now() / 1000,
-          title: "Test Post 1",
-          media: [
-            {
-              creation_timestamp: Date.now() / 1000,
-              title: "Test Media 1",
-            },
-          ],
-        },
-      ])
-    );
+    const mockValue = [
+      {
+        creation_timestamp: Date.now() / 1000,
+        title: "Test Post 1",
+        media: [
+          {
+            creation_timestamp: Date.now() / 1000,
+            title: "Test Media 1",
+          },
+        ],
+      },
+    ];
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync(mockValue));
 
     // Reset BlueskyClient mock
     jest.mocked(BlueskyClient).mockClear();
@@ -164,7 +172,7 @@ describe("Main App", () => {
       ],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([mockPost]));
 
     await main();
 
@@ -192,7 +200,7 @@ describe("Main App", () => {
       ],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([oldPost]));
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([oldPost]));
 
     await main();
 
@@ -215,9 +223,7 @@ describe("Main App", () => {
       ],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(
-      JSON.stringify([futurePost])
-    );
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([futurePost]));
 
     await main();
 
@@ -241,9 +247,7 @@ describe("Main App", () => {
         ],
       };
 
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify([exactMinDatePost])
-      );
+      (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([exactMinDatePost]));
 
       await main();
 
@@ -273,9 +277,7 @@ describe("Main App", () => {
         ],
       };
 
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify([exactMaxDatePost])
-      );
+      (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([exactMaxDatePost]));
 
       await main();
 
@@ -338,7 +340,7 @@ describe("Main App", () => {
         },
       ];
 
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(posts));
+      (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync(posts));
 
       await main();
 
@@ -389,7 +391,7 @@ describe("Main App", () => {
         },
       ];
 
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(posts));
+      (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync(posts));
 
       await main();
 
@@ -414,9 +416,7 @@ describe("Main App", () => {
       media: [{ title: "Invalid Media" }],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(
-      JSON.stringify([invalidPost])
-    );
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([invalidPost]));
 
     await main();
 
@@ -443,7 +443,7 @@ describe("Main App", () => {
       ],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([mockPost]));
     jest.mocked(BlueskyClient).prototype.createPost = jest
       .fn()
       .mockRejectedValue(new Error("Post failed"));
@@ -469,7 +469,7 @@ describe("Main App", () => {
       ],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([mockPost]));
 
     await main();
 
@@ -507,7 +507,7 @@ describe("Main App", () => {
       ],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([mockPost]));
     await main();
 
     expect(jest.mocked(BlueskyClient)).toHaveBeenCalled();
@@ -550,7 +550,7 @@ describe("Main App", () => {
       ],
     };
 
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockPost]));
+    (fs.readFileSync as jest.Mock).mockImplementation(mockReadFileSync([mockPost]));
 
     const embeddedMedia = mockPost.media.map(() => ({
       getType: () => "image",
