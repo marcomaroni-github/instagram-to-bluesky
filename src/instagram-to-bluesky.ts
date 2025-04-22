@@ -163,11 +163,11 @@ export async function main() {
   } else {
     postsJsonPath = path.join(
       archivalFolder,
-      "your_instagram_activity/content/posts_1.json"
+      "your_instagram_activity/media/posts_1.json"
     );
     reelsJsonPath = path.join(
       archivalFolder,
-      "your_instagram_activity/content/reels.json"
+      "your_instagram_activity/media/reels.json"
     );
   }
 
