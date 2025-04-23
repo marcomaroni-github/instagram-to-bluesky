@@ -1,6 +1,6 @@
 {
   "name": "instagramtobluesky",
-  "version": "0.7.2",
+  "version": "0.7.4",
   "description": "Import Instagram archive to a Bluesky account",
   "main": "main.js",
   "engines": {
