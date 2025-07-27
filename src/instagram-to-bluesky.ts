@@ -20,6 +20,7 @@ import {
   InstagramMediaProcessor,
   InstagramExportedPost,
   readJsonFile,
+  sortPostsByCreationTime,
 } from "./media";
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
@@ -191,12 +192,7 @@ export async function main() {
 
   // Sort instagram posts by creation timestamp
   if (allInstaPosts && allInstaPosts.length > 0) {
-    const sortedPosts = allInstaPosts.sort((a, b) => {
-      // Get the first posts media and compare timestamps.
-      const ad = a.media[0].creation_timestamp;
-      const bd = b.media[0].creation_timestamp;
-      return ad - bd;
-    });
+    const sortedPosts = allInstaPosts.sort(sortPostsByCreationTime)
 
     // Preprocess posts before transforming into a normalized format.
     for (const post of sortedPosts) {
