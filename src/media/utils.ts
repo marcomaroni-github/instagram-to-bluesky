@@ -79,4 +79,30 @@ export function getMediaBuffer(
   }
 
   return mediaBuffer;
-} 
+}
+
+/**
+ * Reads and parses a JSON file from the specified path.
+ *
+ * If the file does not exist, logs an informational message and returns the provided fallback value.
+ * If the file exists but cannot be parsed as JSON, logs a warning and returns the fallback value.
+ *
+ * @param filePath - The path to the JSON file to read.
+ * @param missingFileMessage - Optional message to log if the file is not found. Defaults to 'File not found.'.
+ * @param fallback - Optional fallback value to return if the file is missing or cannot be parsed. Defaults to an empty array.
+ * @returns The parsed JSON content as an array, or the fallback value if the file is missing or invalid.
+ */
+export function readJsonFile(filePath: string, missingFileMessage: string = 'File not found.', fallback: any[] = []): any[] {
+  if (!FS.existsSync(filePath)) {
+    logger.info(missingFileMessage)
+    return fallback;
+  }
+  
+  try {
+    const buffer = FS.readFileSync(filePath);
+    return JSON.parse(buffer.toString());
+  } catch (error) {
+    logger.warn(`Failed to parse ${filePath}: ${(error as Error)?.message}`);
+    return fallback;
+  }
+};
