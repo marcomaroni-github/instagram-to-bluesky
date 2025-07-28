@@ -1,4 +1,3 @@
-import FS from "fs";
 import path from "path";
 
 import { BlobRef } from "@atproto/api";
@@ -20,6 +19,8 @@ import {
   decodeUTF8,
   InstagramMediaProcessor,
   InstagramExportedPost,
+  readJsonFile,
+  sortPostsByCreationTime,
 } from "./media";
 
 const API_RATE_LIMIT_DELAY = 3000; // https://docs.bsky.app/docs/advanced-guides/rate-limits
@@ -171,15 +172,18 @@ export async function main() {
     );
   }
 
-  // Read instagram posts JSON file as raw buffer data.
-  const instaPostsFileBuffer: Buffer = FS.readFileSync(postsJsonPath);
-  const instaReelsFileBuffer: Buffer = FS.readFileSync(reelsJsonPath);
+  // Read posts and reels data
+  const instaPostsData = readJsonFile(postsJsonPath, 'No posts found. The file path may have changed - please update the env to point to the new folder containing posts_1.json');
+  const reelsJsonData = readJsonFile(reelsJsonPath, 'No reels found. Some accounts don\'t have reels, or the folder may have changed.');
 
-  // Decode raw JSON data into an object.
-  const allInstaPosts: InstagramExportedPost[] = decodeUTF8([].concat(
-    JSON.parse(instaPostsFileBuffer.toString()),
-    JSON.parse(instaReelsFileBuffer.toString())['ig_reels_media']
-  ));
+  // Extract reels data (some users don't have reels)
+  const instaReelsData = reelsJsonData['ig_reels_media'] || [];
+
+  // Decode raw JSON data into an object
+  const allInstaPosts: InstagramExportedPost[] = decodeUTF8([
+    ...instaPostsData,
+    ...instaReelsData
+  ]);
 
   // Initialize counters for posts and media.
   let importedPosts = 0;
@@ -188,12 +192,7 @@ export async function main() {
 
   // Sort instagram posts by creation timestamp
   if (allInstaPosts && allInstaPosts.length > 0) {
-    const sortedPosts = allInstaPosts.sort((a, b) => {
-      // Get the first posts media and compare timestamps.
-      const ad = a.media[0].creation_timestamp;
-      const bd = b.media[0].creation_timestamp;
-      return ad - bd;
-    });
+    const sortedPosts = allInstaPosts.sort(sortPostsByCreationTime)
 
     // Preprocess posts before transforming into a normalized format.
     for (const post of sortedPosts) {
